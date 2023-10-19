@@ -86,7 +86,16 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
     // TODO: generate a passthrough ray
-    return Ray {};
+    if (hitInfo.barycentricCoord.x + hitInfo.barycentricCoord.y + hitInfo.barycentricCoord.z > 1) {
+        return ray;
+    }
+    if (hitInfo.barycentricCoord.x < 0 || hitInfo.barycentricCoord.y<0 || hitInfo.barycentricCoord.z<0) {
+        return ray;
+    }
+
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    Ray result(intersection, ray.direction, std::numeric_limits<double>::infinity());
+    return result;
 }
 
 // TODO: standard feature
@@ -120,5 +129,11 @@ void renderRayTransparentComponent(RenderState& state, Ray ray, const HitInfo& h
 {
     // TODO; you should first implement generatePassthroughRay()
     Ray r = generatePassthroughRay(ray, hitInfo);
-    // ...
+    glm::vec3 currentColor = hitColor;
+    rayDepth += 1;
+    glm::vec3 hh = renderRay(state, r, rayDepth);
+    hitColor = hitInfo.material.transparency * currentColor + (1 - hitInfo.material.transparency) * hh;
+    HitInfo hi = hitInfo;
+    state.bvh.intersect(state, r, hi);
+    drawRay(r, glm::vec3(1.0f));
 }
