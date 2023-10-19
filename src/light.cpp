@@ -25,8 +25,9 @@ DISABLE_WARNINGS_POP()
 void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec3& position, glm::vec3& color)
 {
     // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    glm::vec3 segment = light.endpoint1 - light.endpoint0;
+    position = light.endpoint0 + sample * segment;
+    color = light.color0 * sample + light.color1 * (1-sample);
 }
 
 // TODO: Standard feature
@@ -41,8 +42,8 @@ void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec
 void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight& light, glm::vec3& position, glm::vec3& color)
 {
     // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    position = light.v0 + sample.x * light.edge01 + sample.y*light.edge02;
+    color = light.color0 * (1 - sample.x) * (1 - sample.y) + light.color1 * (1 - sample.x) * (sample.y) + light.color2 * (sample.x) * (1 - sample.y) + light.color3 * (sample.x) * (sample.y);
 }
 
 // TODO: Standard feature
@@ -64,7 +65,18 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
     } else {
         // Shadows are enabled in the renderer
         // TODO: implement this function; currently, the light simply passes through
-        return true;
+        glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+
+        glm::vec3 directionReversed = lightPosition - intersection;
+        directionReversed = glm::normalize(directionReversed);
+
+        float t = (lightPosition.x - intersection.x) / directionReversed.x;
+
+        Ray inverseRay(intersection, directionReversed, t);
+
+        HitInfo hi = hitInfo;
+        state.bvh.intersect(state, inverseRay, hi);
+        return (inverseRay.t == t);
     }
 }
 
