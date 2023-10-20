@@ -12,8 +12,15 @@
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
-    // TODO: implement this function.
-    return glm::vec3(0.0);
+    glm::vec3 a = v1 - v0;
+    glm::vec3 b = v2 - v0;
+    glm::vec3 c = p - v0;
+
+    float beta = (glm::dot(a, a) * glm::dot(a, c) - glm::dot(a, b) * glm::dot(b, c)) / (glm::dot(a, a) * glm::dot(b, b) - glm::dot(a, b) * glm::dot(a, b));
+    float gamma = (glm::dot(a, a) * glm::dot(b, c) - glm::dot(a, b) * glm::dot(a, c)) / (glm::dot(a, a) * glm::dot(b, b) - glm::dot(a, b) * glm::dot(a, b));
+    float alpha = 1.0f - beta - gamma;
+
+    return glm::vec3 { alpha, beta, gamma };
 }
 
 // TODO Standard feature
@@ -26,8 +33,9 @@ glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, cons
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 interpolateNormal(const glm::vec3& n0, const glm::vec3& n1, const glm::vec3& n2, const glm::vec3 bc)
 {
-    // TODO: implement this function.
-    return glm::vec3(0.0);
+    glm::vec3 interpolated = bc.x * n0 + bc.y * n1 + bc.z * n2;
+    return interpolated;
+
 }
 
 // TODO Standard feature
@@ -40,6 +48,6 @@ glm::vec3 interpolateNormal(const glm::vec3& n0, const glm::vec3& n1, const glm:
 // This method is unit-tested, so do not change the function signature.
 glm::vec2 interpolateTexCoord(const glm::vec2& t0, const glm::vec2& t1, const glm::vec2& t2, const glm::vec3 bc)
 {
-// TODO: implement this function.
-    return glm::vec2(0.0);
+    glm::vec2 interpolated = bc.x * t0 + bc.y * t1 + bc.z * t2;
+    return interpolated;
 }

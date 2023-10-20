@@ -19,7 +19,10 @@ glm::vec3 sampleTextureNearest(const Image& image, const glm::vec2& texCoord)
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
-    return image.pixels[0];
+    int i = image.width * texCoord.x;
+    int j = image.height * texCoord.y;
+    int index = (j * image.width) + i;
+    return image.pixels[index];
 }
 
 // TODO: Standard feature
@@ -39,5 +42,9 @@ glm::vec3 sampleTextureBilinear(const Image& image, const glm::vec2& texCoord)
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
+    float i = image.width * texCoord.x;
+    float j = image.height * texCoord.y;
+    //Get 4 nearest pixels
+
     return image.pixels[0];
 }

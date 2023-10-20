@@ -81,6 +81,7 @@ glm::vec3 computeLambertianModel(RenderState& state, const glm::vec3& cameraDire
 glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
     // TODO: Implement phong shading
+
     return sampleMaterialKd(state, hitInfo) * lightColor;
 }
 
@@ -114,7 +115,56 @@ glm::vec3 computeBlinnPhongModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 LinearGradient::sample(float ti) const
 {
-    return glm::vec3(0.5f);
+    //Get min-max
+    std::vector<float> ts;
+    for (int i = 0; i < components.size(); i++) {
+        ts.push_back(components[i].t);
+    }
+    float min = ts[0];
+    float minIndex = 0;
+    float max = ts[0];
+    float maxIndex = 0;
+    for (int i = 1; i < components.size(); i++) {
+        if (components[i].t > max) {
+                max = components[i].t;
+                maxIndex = i;
+        }
+        if (components[i].t < min) {
+                min = components[i].t;
+                minIndex = i;
+        }
+    }
+
+    //Check for out of boundaries
+    if (ti > max) {
+        return components[maxIndex].color;
+    }
+    if (ti < min) {
+        return components[minIndex].color;
+    }
+
+
+    for (int i = 0; i < components.size() - 1; i++) {
+        float t = components[i].t;
+        float t2 = components[i + 1].t;
+        if (t == ti) {
+            return components[i].color;
+              
+        }
+        if (t2 == ti) {
+            return components[i + 1].color;
+           
+        }
+        if (ti > t && ti < t2) {
+            glm::vec3 res = { components[i].color.x + components[i + 1].color.x,
+                components[i].color.y + components[i + 1].color.y,
+                components[i].color.z + components[i + 1].color.z };
+            return res * 0.5f; 
+        }
+    }
+
+
+
 }
 
 // TODO: Standard feature
