@@ -77,9 +77,9 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
     glm::vec3 direction = coeff * hitInfo.normal - ray.direction;
     // Origin at intersection
     glm::vec3 origin = ray.origin + ray.t * ray.direction;
-    Ray r = { origin, direction, std::numeric_limits<double>::infinity() };
+    Ray r = { origin, direction };
     //Draw normal for visual debuggin purposes
-    Ray n = { origin, hitInfo.normal, std::numeric_limits<double>::infinity() };
+    Ray n = { origin, hitInfo.normal };
     drawRay(n, glm::vec3 { 0.0f, 1.0f, 0.0f });
 
     return r;
@@ -113,10 +113,8 @@ void renderRaySpecularComponent(RenderState& state, Ray ray, const HitInfo& hitI
 {
     // TODO; you should first implement generateReflectionRay()
     Ray r = generateReflectionRay(ray, hitInfo);
-    glm::vec3 currentColor = hitColor;
-    hitColor = currentColor + (hitInfo.material.ks * renderRay(state, r, rayDepth + 1));
-    HitInfo hi2 = hitInfo;
-    //state.bvh.intersect(state, r, hi2);
+    hitColor +=  (hitInfo.material.ks * renderRay(state, r, rayDepth + 1));
+
 }
 
 // TODO: standard feature

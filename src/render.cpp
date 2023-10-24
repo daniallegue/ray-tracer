@@ -112,8 +112,8 @@ std::vector<Ray> generatePixelRaysStratified(RenderState& state, const Trackball
     std::vector<Ray> rays;
     for (int p = 0; p < n - 1; p++) {
         for (int q = 0; q < n - 1; q++) {
-            float i = pixel.x + state.sampler.next_1d() + p;
-            float j = pixel.y + state.sampler.next_1d() + q;
+            float i = (pixel.x + state.sampler.next_1d() + p) / n;
+            float j = (pixel.y + state.sampler.next_1d() + q) / n;
             glm::vec2 position = { i, j };
             Ray r = camera.generateRay(position / glm::vec2(screenResolution) * 2.f - 1.f);
             rays.push_back(r);
