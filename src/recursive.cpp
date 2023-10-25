@@ -73,14 +73,15 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
 // This method is unit-tested, so do not change the function signature.
 Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 {
-    float coeff = 2.0f * glm::dot(glm::normalize(ray.direction), glm::normalize(hitInfo.normal));
-    glm::vec3 direction = coeff * hitInfo.normal - ray.direction;
-    // Origin at intersection
-    glm::vec3 origin = ray.origin + ray.t * ray.direction;
-    Ray r = { origin, direction };
+
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    glm::vec3 direction = ray.direction;
+    glm::vec3 reflected = (2.0f * glm::dot((ray.direction), hitInfo.normal) * hitInfo.normal) - direction;
+    Ray r = { intersection, - reflected };
+    drawRay(r, glm::vec3 { 0.0f, 0.0f, 1.0f });
     //Draw normal for visual debuggin purposes
-    Ray n = { origin, hitInfo.normal };
-    drawRay(n, glm::vec3 { 0.0f, 1.0f, 0.0f });
+    Ray n = { intersection, hitInfo.normal };
+    drawLine(intersection, hitInfo.normal, glm::vec3 { 0.0f, 1.0f, 0.0f });
 
     return r;
 }

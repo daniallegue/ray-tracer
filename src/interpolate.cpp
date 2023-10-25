@@ -12,13 +12,16 @@
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
-    glm::vec3 a = v1 - v0;
-    glm::vec3 b = v2 - v0;
-    glm::vec3 c = p - v0;
 
-    float beta = (glm::dot(a, a) * glm::dot(a, c) - glm::dot(a, b) * glm::dot(b, c)) / (glm::dot(a, a) * glm::dot(b, b) - glm::dot(a, b) * glm::dot(a, b));
-    float gamma = (glm::dot(a, a) * glm::dot(b, c) - glm::dot(a, b) * glm::dot(a, c)) / (glm::dot(a, a) * glm::dot(b, b) - glm::dot(a, b) * glm::dot(a, b));
-    float alpha = 1.0f - beta - gamma;
+    glm::vec3 n = glm::cross((v1 - v0), (v2 - v0));
+    glm::vec3 a = glm::cross((v2 - v1), (p - v1));
+    glm::vec3 b = glm::cross((v0 - v2), (p - v2));
+    glm::vec3 c = glm::cross((v1 - v0), (p - v0));
+
+    float alpha = glm::dot(a, n) / glm::dot(n, n);
+    float beta = glm::dot(b, n) / glm::dot(n, n);
+    float gamma = 1 - beta - alpha;
+
 
     return glm::vec3 { alpha, beta, gamma };
 }
