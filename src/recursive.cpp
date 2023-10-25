@@ -31,6 +31,7 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
         return sampleEnvironmentMap(state, ray);
     }
 
+
     // Return value: the light along the ray
     // Given an intersection, estimate the contribution of scene lights at this intersection
     glm::vec3 Lo = computeLightContribution(state, ray, hitInfo);
@@ -58,6 +59,7 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
         if (state.features.enableTransparency && isTransparent) {
             renderRayTransparentComponent(state, ray, hitInfo, Lo, rayDepth);
         }
+        
     }
 
     return Lo;
@@ -71,9 +73,17 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
 // This method is unit-tested, so do not change the function signature.
 Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 {
-    // TODO: generate a mirrored ray
-    //       if you use glm::reflect, you will not get points for this method!
-    return Ray {};
+
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    glm::vec3 direction = ray.direction;
+    glm::vec3 reflected = (2.0f * glm::dot((ray.direction), hitInfo.normal) * hitInfo.normal) - direction;
+    Ray r = { intersection, - reflected };
+    drawRay(r, glm::vec3 { 0.0f, 0.0f, 1.0f });
+    //Draw normal for visual debuggin purposes
+    Ray n = { intersection, hitInfo.normal };
+    drawLine(intersection, hitInfo.normal, glm::vec3 { 0.0f, 1.0f, 0.0f });
+
+    return r;
 }
 
 // TODO: Standard feature
@@ -112,7 +122,8 @@ void renderRaySpecularComponent(RenderState& state, Ray ray, const HitInfo& hitI
 {
     // TODO; you should first implement generateReflectionRay()
     Ray r = generateReflectionRay(ray, hitInfo);
-    // ...
+    hitColor +=  (hitInfo.material.ks * renderRay(state, r, rayDepth + 1));
+
 }
 
 // TODO: standard feature
