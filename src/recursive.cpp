@@ -95,14 +95,7 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 // This method is unit-tested, so do not change the function signature.
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
-    // TODO: generate a passthrough ray
-    if (hitInfo.barycentricCoord.x + hitInfo.barycentricCoord.y + hitInfo.barycentricCoord.z > 1) {
-        return ray;
-    }
-    if (hitInfo.barycentricCoord.x < 0 || hitInfo.barycentricCoord.y<0 || hitInfo.barycentricCoord.z<0) {
-        return ray;
-    }
-
+    
     glm::vec3 intersection = ray.origin + ray.t * ray.direction;
     Ray result(intersection, ray.direction, std::numeric_limits<double>::infinity());
     return result;
@@ -138,13 +131,23 @@ void renderRaySpecularComponent(RenderState& state, Ray ray, const HitInfo& hitI
 // This method is unit-tested, so do not change the function signature.
 void renderRayTransparentComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth)
 {
-    // TODO; you should first implement generatePassthroughRay()
-    Ray r = generatePassthroughRay(ray, hitInfo);
+    HitInfo hi = hitInfo;
     glm::vec3 currentColor = hitColor;
     rayDepth += 1;
-    glm::vec3 hh = renderRay(state, r, rayDepth);
-    hitColor = hitInfo.material.transparency * currentColor + (1 - hitInfo.material.transparency) * hh;
-    HitInfo hi = hitInfo;
-    state.bvh.intersect(state, r, hi);
-    drawRay(r, glm::vec3(1.0f));
+
+    state.bvh.intersect(state, ray, hi);
+    drawRay(ray, glm::vec3(1.0f));
+
+    Ray r = generatePassthroughRay(ray, hitInfo);
+    Ray tempRay = r;
+    HitInfo tempHitInfo = hi;
+    bool nextHit = state.bvh.intersect(state, tempRay, tempHitInfo);
+
+    if (hi.material.transparency != 0.0f && nextHit) {
+        glm::vec3 hh = renderRay(state, r, rayDepth);
+        hitColor = hitInfo.material.transparency * hh + (1 - hitInfo.material.transparency) * currentColor;
+    } else {
+        hitColor = (1 - hitInfo.material.transparency) * currentColor;
+    }
+
 }
