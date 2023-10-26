@@ -115,10 +115,10 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
 
     HitInfo hi = hitInfo;
     state.bvh.intersect(state, currentRay, hi);
-   // lC = lC * hi.material.kd * (1 - hi.material.transparency);
+    lC = lC * hi.material.kd * (1 - hi.material.transparency);
     while (currentRay.t < t && hi.material.transparency != 0.0f) {
         state.bvh.intersect(state, currentRay, hi);
-        //lC = lC * hi.material.kd * (1 - hi.material.transparency);
+        lC = lC * hi.material.kd * (1 - hi.material.transparency);
     }
     if (hi.material.transparency == 0.0f) {
         return glm::vec3(0.0f); 
