@@ -31,7 +31,12 @@ void updateHitInfo(RenderState& state, const BVHInterface::Primitive& primitive,
 
     // Next, if `features.enableNormalMapping` is true, generate smoothly interpolated vertex normals
     if (state.features.enableNormalInterp) {
-        hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+        drawLine(v0.position, v0.normal, glm::vec3(0.5f, 0.5f, 0.5f));
+        drawLine(v1.position, v1.normal, glm::vec3(0.5f, 0.5f, 0.5f));
+        drawLine(v2.position, v2.normal, glm::vec3(0.5f, 0.5f, 0.5f));
+        glm::vec3 normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+        drawLine(p, normal, glm::vec3(0.5f, 0.5f, 0.5f));
+        hitInfo.normal = normal;
     }
 
     // Next, if `features.enableTextureMapping` is true, generate smoothly interpolated vertex uvs
