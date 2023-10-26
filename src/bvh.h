@@ -14,6 +14,7 @@ AxisAlignedBox computePrimitiveAABB(const BVHInterface::Primitive primitive);
 // For a description of the method's arguments, refer to 'bounding_volume_hierarchy.cpp'
 // This method is unit-tested, so do not change the function signature.
 AxisAlignedBox computeSpanAABB(std::span<const BVHInterface::Primitive> primitives);
+AxisAlignedBox UnionAABB(const AxisAlignedBox& a, const AxisAlignedBox& b);
 
 // TODO: Standard feature
 // Given a BVH triangle, compute the geometric centroid of the triangle
