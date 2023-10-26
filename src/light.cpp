@@ -24,9 +24,10 @@ DISABLE_WARNINGS_POP()
 // This method is unit-tested, so do not change the function signature.
 void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec3& position, glm::vec3& color)
 {
-    // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    
+    glm::vec3 segment = light.endpoint1 - light.endpoint0;
+    position = light.endpoint0 + sample * segment;
+    color = light.color0 * sample + light.color1 * (1-sample);
 }
 
 // TODO: Standard feature
@@ -40,9 +41,9 @@ void sampleSegmentLight(const float& sample, const SegmentLight& light, glm::vec
 // This method is unit-tested, so do not change the function signature.
 void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight& light, glm::vec3& position, glm::vec3& color)
 {
-    // TODO: implement this function.
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+
+    position = light.v0 + sample.x * light.edge01 + sample.y*light.edge02;
+    color = light.color0 * (1 - sample.x) * (1 - sample.y) + light.color1 * (1 - sample.x) * (sample.y) + light.color2 * (sample.x) * (1 - sample.y) + light.color3 * (sample.x) * (sample.y);
 }
 
 // TODO: Standard feature
@@ -56,15 +57,30 @@ void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight&
 // - hitInfo;       information about the current intersection
 // - return;        whether the light is visible (true) or not (false)
 // This method is unit-tested, so do not change the function signature.
-bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPosition, const glm::vec3 &lightColor, const Ray& ray, const HitInfo& hitInfo)
+bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     if (!state.features.enableShadows) {
         // Shadows are disabled in the renderer
         return true;
     } else {
         // Shadows are enabled in the renderer
-        // TODO: implement this function; currently, the light simply passes through
-        return true;
+
+        glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+
+        glm::vec3 direcetionVector = intersection - lightPosition;
+        direcetionVector = glm::normalize(direcetionVector);
+        float t = (intersection.x - lightPosition.x) / direcetionVector.x;
+        Ray currentRay(lightPosition, direcetionVector, t);
+
+        HitInfo hi = hitInfo;
+        state.bvh.intersect(state, currentRay, hi);
+        while (currentRay.t < t && hi.material.transparency != 0.0f) {
+            state.bvh.intersect(state, currentRay, hi);
+        }
+        if (hi.material.transparency == 0.0f) {
+            return false;
+        }
+        return currentRay.t == ray.t;
     }
 }
 
@@ -86,7 +102,29 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
 glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec3& lightPosition, const glm::vec3& lightColor, const Ray& ray, const HitInfo& hitInfo)
 {
     // TODO: implement this function; currently, the light simply passes through
-    return lightColor;
+    if (!visibilityOfLightSampleBinary(state, lightPosition, lightColor, ray, hitInfo)) {
+        return glm::vec3(0.0f);
+    }
+    
+     glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    glm::vec3 lC = lightColor;
+    glm::vec3 direcetionVector = intersection - lightPosition;
+    direcetionVector = glm::normalize(direcetionVector);
+    float t = (intersection.x - lightPosition.x) / direcetionVector.x;
+    Ray currentRay(lightPosition, direcetionVector, t);
+
+    HitInfo hi = hitInfo;
+    state.bvh.intersect(state, currentRay, hi);
+   // lC = lC * hi.material.kd * (1 - hi.material.transparency);
+    while (currentRay.t < t && hi.material.transparency != 0.0f) {
+        state.bvh.intersect(state, currentRay, hi);
+        //lC = lC * hi.material.kd * (1 - hi.material.transparency);
+    }
+    if (hi.material.transparency == 0.0f) {
+        return glm::vec3(0.0f); 
+    }
+    return lC * hi.material.kd * (1 - hi.material.transparency);
+;
 }
 
 // TODO: Standard feature
