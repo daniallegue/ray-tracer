@@ -64,6 +64,27 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
+
+    auto numSamples = state.features.extra.numGlossySamples;
+    if (hitInfo.material.ks == glm::vec3(0.0f) || numSamples <= 0) {
+        return; 
+    }
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    glm::vec3 reflection = glm::normalize(glm::reflect(ray.direction, hitInfo.normal));
+
+    glm::vec3 glossyColor(0.0f, 0.0f, 0.0f);
+
+    for (int x = 0; x<numSamples;x++) {
+        glm::vec3 pertubedReflection = glm::normalize(reflection + glm::vec3(rand() % (10) + 1, rand() % (10) + 1, rand() % (10) + 1));
+
+        Ray glossyRay(intersection + pertubedReflection * 10.0f * std::numeric_limits<float>::epsilon(), pertubedReflection);
+        rayDepth += 1;
+        glossyColor = renderRay(state, glossyRay, rayDepth);
+
+        glossyColor *= hitInfo.material.ks;
+    }
+
+    hitColor += glossyColor;
 }
 
 // TODO; Extra feature
