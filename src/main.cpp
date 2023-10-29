@@ -191,6 +191,11 @@ int main(int argc, char** argv)
                 if (config.features.extra.enableDepthOfField) {
                     ImGui::Indent();
                     // Add DOF settings here, if necessary
+
+                    //added focal length and aperture size
+                    uint32_t minSamples = 1u, maxSamples = 512u;
+                    ImGui::SliderScalar("Focal Length", ImGuiDataType_U32, &config.features.extra.focalLength, &minSamples, &maxSamples);
+                    ImGui::SliderScalar("Aperture Size", ImGuiDataType_U32, &config.features.extra.apertureSize, &minSamples, &maxSamples);
                     ImGui::Unindent();
                 }
                 ImGui::Checkbox("Motion blur", &config.features.extra.enableMotionBlur);
