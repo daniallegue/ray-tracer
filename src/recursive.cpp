@@ -74,8 +74,10 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
 Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 {
 
-    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    
     glm::vec3 direction = ray.direction;
+    glm::vec3 offset = 1e-6f * hitInfo.normal;
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction + offset;
     glm::vec3 reflected = (2.0f * glm::dot((ray.direction), hitInfo.normal) * hitInfo.normal) - direction;
     Ray r = { intersection, - reflected };
     drawRay(r, glm::vec3 { 0.0f, 0.0f, 1.0f });
@@ -95,7 +97,6 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 // This method is unit-tested, so do not change the function signature.
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
-    
     glm::vec3 intersection = ray.origin + (ray.t + 10.0f * std::numeric_limits<float>::epsilon()) * ray.direction;
     Ray result = { intersection , ray.direction };
     return result;
