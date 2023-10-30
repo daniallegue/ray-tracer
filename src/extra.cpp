@@ -113,31 +113,45 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
     auto numSamples = state.features.extra.numGlossySamples;
-    if (hitInfo.material.ks == glm::vec3(0.0f) || numSamples <= 0) {
+    if (hitInfo.material.ks == glm::vec3(0.0f)) {
         return;
     }
     glm::vec3 intersection = ray.origin + ray.t * ray.direction;
     glm::vec3 reflection = glm::normalize(glm::reflect(ray.direction, hitInfo.normal));
 
     glm::vec3 glossyColor(0.0f, 0.0f, 0.0f);
-    rayDepth += 1;
-    for (int x = 0; x < numSamples; x++) {
-        float r1 = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * 2.0f - 1.0f;
-        float r2 = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * 2.0f - 1.0f;
-        float r3 = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * 2.0f - 1.0f;
-        //glm::vec3 pertubedReflection = glm::normalize(reflection + glm::vec3(r1, r2, r3));
+    std::vector<Ray> glossyRays;
 
-        glm::vec3 u = glm::cross(reflection, hitInfo.normal);
+    //generate numSamples Glossy Rays
+    for (int x = 0; x < numSamples; x++) {
+        //Generates and angle between [0,2pi]
+        float angle = static_cast<float>(2.0 * glm::pi<float>() * rand() / static_cast<float>(RAND_MAX));
+
+        //Generate a radius between [0,1]
+        float radius = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+        //taking the corresponding disk amplitude
+        float a = hitInfo.material.shininess / 256.0f;
+        radius = a * sqrt(radius);
+        
+        //Convert polar coordinates to Cartesian coordinates
+        float r1 = radius * std::cos(angle);
+        float r2 = radius * std::sin(angle);
+
+        //disturb reflection
+        glm::vec3 u = hitInfo.normal;
         glm::vec3 v = glm::cross(u, reflection);
-        glm::vec3 pertubedReflection = glm::normalize(reflection + u*r1 + v*r2); 
+        glm::vec3 pertubedReflection = glm::normalize(reflection + u*r1 + v*r2);
 
         Ray glossyRay(intersection + pertubedReflection * 10.0f * std::numeric_limits<float>::epsilon(), pertubedReflection);
         
-        glossyColor += renderRay(state, glossyRay, rayDepth);
-
-        glossyColor *= hitInfo.material.ks;
+        glossyRays.push_back(glossyRay);
     }
-    hitColor += glossyColor / (float)numSamples;
+
+    //calculate the final Color for each glossy Ray and taking its corresponding weight ->  /(x+1)
+    for (float x = 0.0f; x < glossyRays.size(); x++) {
+        hitColor = hitColor * x / (x + 1) + (renderRay(state, glossyRays[x], rayDepth + 1) * hitInfo.material.ks) / (x + 1);
+    }
 }
 
 // TODO; Extra feature

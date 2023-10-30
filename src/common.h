@@ -71,6 +71,9 @@ struct ExtraFeatures {
     // Parameters for glossy reflection
     uint32_t numGlossySamples = 1;
 
+    //Parameters for DOF
+    uint32_t apertureSize = 1;
+    uint32_t focalLength = 1;
 };
 
 struct Features {
