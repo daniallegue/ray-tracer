@@ -74,8 +74,10 @@ glm::vec3 renderRay(RenderState& state, Ray ray, int rayDepth)
 Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 {
 
-    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    
     glm::vec3 direction = ray.direction;
+    glm::vec3 offset = 1e-6f * hitInfo.normal;
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction + offset;
     glm::vec3 reflected = (2.0f * glm::dot((ray.direction), hitInfo.normal) * hitInfo.normal) - direction;
     Ray r = { intersection, - reflected };
     drawRay(r, glm::vec3 { 0.0f, 0.0f, 1.0f });
@@ -95,9 +97,8 @@ Ray generateReflectionRay(Ray ray, HitInfo hitInfo)
 // This method is unit-tested, so do not change the function signature.
 Ray generatePassthroughRay(Ray ray, HitInfo hitInfo)
 {
-    
-    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
-    Ray result(intersection, ray.direction, std::numeric_limits<double>::infinity());
+    glm::vec3 intersection = ray.origin + (ray.t + 10.0f * std::numeric_limits<float>::epsilon()) * ray.direction;
+    Ray result = { intersection , ray.direction };
     return result;
 }
 
@@ -131,23 +132,11 @@ void renderRaySpecularComponent(RenderState& state, Ray ray, const HitInfo& hitI
 // This method is unit-tested, so do not change the function signature.
 void renderRayTransparentComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth)
 {
-    HitInfo hi = hitInfo;
     glm::vec3 currentColor = hitColor;
     rayDepth += 1;
 
-    state.bvh.intersect(state, ray, hi);
-    drawRay(ray, glm::vec3(1.0f));
-
     Ray r = generatePassthroughRay(ray, hitInfo);
-    Ray tempRay = r;
-    HitInfo tempHitInfo = hi;
-    bool nextHit = state.bvh.intersect(state, tempRay, tempHitInfo);
-
-    if (hi.material.transparency != 0.0f && nextHit) {
-        glm::vec3 hh = renderRay(state, r, rayDepth);
-        hitColor = hitInfo.material.transparency * hh + (1 - hitInfo.material.transparency) * currentColor;
-    } else {
-        hitColor = (1 - hitInfo.material.transparency) * currentColor;
-    }
+    glm::vec3 hh = renderRay(state, r, rayDepth);
+    hitColor = (hitInfo.material.transparency) * hh + (1- hitInfo.material.transparency) * currentColor;
 
 }
