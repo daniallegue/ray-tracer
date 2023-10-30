@@ -130,7 +130,7 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
         //Generate a radius between [0,1]
         float radius = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
-        //taking the corresponding disk amplitude
+        //taking the corresponding disk amplitude, in this case I chose:
         float a = hitInfo.material.shininess / 256.0f;
         radius = a * sqrt(radius);
         
@@ -138,9 +138,11 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
         float r1 = radius * std::cos(angle);
         float r2 = radius * std::sin(angle);
 
-        //disturb reflection
+        //created an orthonormal basis
         glm::vec3 u = hitInfo.normal;
         glm::vec3 v = glm::cross(u, reflection);
+
+        //sampled on that basis based on the disk
         glm::vec3 pertubedReflection = glm::normalize(reflection + u*r1 + v*r2);
 
         Ray glossyRay(intersection + pertubedReflection * 10.0f * std::numeric_limits<float>::epsilon(), pertubedReflection);
