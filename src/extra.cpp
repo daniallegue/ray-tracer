@@ -1,8 +1,10 @@
 #include "extra.h"
 #include "bvh.h"
+#include "intersect.h"
 #include "light.h"
 #include "recursive.h"
 #include "shading.h"
+#include "texture.h"
 #include <framework/trackball.h>
 
 // TODO; Extra feature
@@ -66,7 +68,6 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     // ...
 }
 
-// TODO; Extra feature
 // Given a camera ray (or reflected camera ray) that does not intersect the scene, evaluates the contribution
 // along the ray, originating from an environment map. You will have to add support for environment textures
 // to the Scene object, and provide a scene with the right data to supply this.
@@ -76,12 +77,31 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
 // not go on a hunting expedition for your implementation, so please keep it here!
 glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
 {
-    if (state.features.extra.enableEnvironmentMap) {
-        // Part of your implementation should go here
-        return glm::vec3(0.f);
-    } else {
-        return glm::vec3(0.f);
+    // DEPENDS ON TEXTURE MAPPING
+    if (state.features.extra.enableEnvironmentMap && state.features.enableTextureMapping) {
+        const std::shared_ptr<Image> env = state.scene.environment;
+        const glm::vec3& n = glm::normalize(ray.direction);
+
+        // Sources:
+        // Marschner, S., & Shirley, P. (2015). Fundamentals of computer graphics (Fourth). CRC Press, Taylor & Francis Group. Retrieved October 30, 2023, from https://learning-oreilly-com.tudelft.idm.oclc.org/library/view/fundamentals-of-computer/9781482229417/K22616_C011.xhtml#:-:text=Spherical%20Coordinates,line%20of%20latitude.
+
+        // Section 11.2.1 - Spherical Coordinates, from the book
+        const float lambda = atan2(n.z, n.x);
+        const float theta = glm::acos(n.y);
+
+        // Map angles to texture coordinates
+        const float x = (lambda + glm::pi<float>()) / glm::two_pi<float>();
+        const float y = (glm::pi<float>() - theta) / glm::pi<float>();
+
+        const glm::vec2 tex { x, y };
+
+        // Use bilinear interpolation if available
+        if (state.features.enableBilinearTextureFiltering) {
+            return sampleTextureBilinear(*env, tex);
+        }
+        return sampleTextureNearest(*env, tex);
     }
+    return glm::vec3(0.f);
 }
 
 
