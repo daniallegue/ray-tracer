@@ -6,6 +6,7 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
 {
     Scene scene;
     scene.type = type;
+    scene.environment = loadEnvironment();
     switch (type) {
     case SingleTriangle: {
         // Load a 3D model with a single triangle
@@ -115,9 +116,15 @@ Scene loadSceneFromFile(const std::filesystem::path& path, const std::vector<std
 {
     Scene scene;
     scene.lights = std::move(lights);
+    scene.environment = loadEnvironment();
 
     auto subMeshes = loadMesh(path);
     std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
 
     return scene;
+}
+
+std::shared_ptr<Image> loadEnvironment()
+{
+    return std::make_shared<Image>(Scene::ENV_PATH);
 }

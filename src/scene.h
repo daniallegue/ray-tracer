@@ -29,6 +29,8 @@ enum SceneType {
 struct Scene {
     using SceneLight = std::variant<PointLight, SegmentLight, ParallelogramLight>;
 
+    static const inline std::filesystem::path ENV_PATH = std::filesystem::path(DATA_DIR) / "env.jpg";
+
     SceneType type;
     std::vector<Mesh> meshes;
     std::vector<Sphere> spheres;
@@ -36,6 +38,7 @@ struct Scene {
 
     // You can add your own objects (e.g. environment maps) here
     // ...
+    std::shared_ptr<Image> environment;
 };
 
 // Load a prebuilt scene.
@@ -43,3 +46,5 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir);
 
 // Load a scene from a file.
 Scene loadSceneFromFile(const std::filesystem::path& path, const std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>>& lights);
+
+std::shared_ptr<Image> loadEnvironment();
