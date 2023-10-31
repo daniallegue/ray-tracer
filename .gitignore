@@ -2,3 +2,4 @@ CMakeSettings.json
 out/
 build/
 .vscode/
+.vs/
