@@ -14,6 +14,8 @@
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen);
 
+//Provides a spline matrix transformation given the time and intial position
+glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float time);
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of motion blur. Here, you integrate over a time domain, and not just the pixel's image domain,
