@@ -22,6 +22,27 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     // ...
 }
 
+//Define function for spline transformation with a cubic Bézier curve
+glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float time)
+{
+    float u = 1.0f - time;
+    float u2 = glm::pow(u, 2);
+    float u3 = glm::pow(u, 3);
+    float t2 = glm::pow(time, 2);
+    float t3 = glm::pow(time, 3);
+
+
+    float movement = features.extra.movementFactor;
+    glm::vec3 p0 = (glm::vec3(0, 0, 0) * movement) + pos;
+    glm::vec3 p1 = (glm::vec3(1, 2, 2) * movement) + pos;
+    glm::vec3 p2 = (glm::vec3(1, 2, 2) * movement) + pos;
+    glm::vec3 p3 = (glm::vec3(3, 1, 0) * movement) + pos;
+    glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * time * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
+
+    //Translate identity matrix by Bezier transformation
+    return glm::translate(glm::mat4(1.0f), newPos);
+}
+
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of motion blur. Here, you integrate over a time domain, and not just the pixel's image domain,
@@ -34,8 +55,99 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
         return;
     }
 
+    for (int y = 0; y < screen.resolution()[1]; y++) {
+        for (int x = 0; x != screen.resolution()[0]; x++) {
+
+            glm::vec3 sceneLight; 
+            RenderState state = {
+                .scene = scene,
+                .features = features,
+                .bvh = bvh,
+                .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
+            };
+
+            for (int i = 0; i < features.extra.numBlurSamples; i++) {
+                //Generate sample for iteration
+                float time = state.sampler.next_1d();
+
+                //Apply to meshes
+                std::vector<Mesh> meshes;
+                for (int i = 0; i < scene.meshes.size(); i++) {
+                    Mesh mesh = scene.meshes[i];
+                    std::vector<Vertex> vertices = mesh.vertices;
+                    std::vector<Vertex> updatedVertices;
+                    for (int u = 0; u < vertices.size(); u++) {
+                        Vertex v = vertices[u];
+                        glm::vec3 pos = v.position;
+                        glm::mat4 transform = bezierTransformation(features, pos, time);
+                        glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                        glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+
+                        Vertex updatedVertex = {
+                            .position = posScaled,
+                            .normal = v.normal,
+                            .texCoord = v.texCoord
+                        };
+                        updatedVertices.push_back(updatedVertex);
+                    }
+
+                    Mesh newMesh = {
+                        .vertices = updatedVertices,
+                        .triangles = mesh.triangles,
+                        .material = mesh.material
+                    };
+                    meshes.push_back(newMesh);
+                }
+
+                //Apply to spheres
+                std::vector<Sphere> spheres;
+                for (int i = 0; i < scene.spheres.size(); i++) {
+                    Sphere sphere = scene.spheres[i];
+                    glm::vec3 pos = sphere.center;
+                    glm::mat4 transform = bezierTransformation(features, pos, time);
+                    glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                    glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+                    Sphere updatedSphere = {
+                        .center = posScaled,
+                        .radius = sphere.radius,
+                        .material = sphere.material
+                    };
+
+                    spheres.push_back(updatedSphere);
+                }
+
+                //Update scene and BVH
+                Scene updatedScene {
+                    .type = scene.type,
+                    .meshes = meshes,
+                    .spheres = spheres,
+                    .lights = scene.lights
+
+                };
+                BVH bvh = BVH(updatedScene, features);
+
+                RenderState updatedState = {
+                    .scene = updatedScene,
+                    .features = state.features,
+                    .bvh = bvh,
+                    .sampler = state.sampler
+                };
+
+                //Generate scene rays
+                auto rays = generatePixelRays(updatedState, camera, { x, y }, screen.resolution());
+                sceneLight += renderRays(updatedState, rays);
+            }
+
+            sceneLight /= (float) features.extra.numBlurSamples;
+            screen.setPixel(x, y, sceneLight);
+        }
+    }
+
 }
 
+
+
+// TODO; Extra feature
 
 constexpr long double factorial(size_t n)
 {
