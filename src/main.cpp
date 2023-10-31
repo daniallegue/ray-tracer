@@ -7,6 +7,8 @@
 #include "recursive.h"
 #include "screen.h"
 // Suppress warnings in third-party code.
+#include "extra.h"
+
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
 #include <fmt/chrono.h>
@@ -184,7 +186,10 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 if (config.features.extra.enableBloomEffect) {
                     ImGui::Indent();
-                    // Add bloom settings here, if necessary
+
+                    ImGui::SliderInt("Filter size", &bloom_filter_size, 1, 101);
+                    ImGui::SliderFloat("Threshold", &bloom_threshold, 0.0f, 1.0f);
+
                     ImGui::Unindent();
                 }
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);

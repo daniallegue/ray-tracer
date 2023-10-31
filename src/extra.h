@@ -24,7 +24,9 @@ glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float ti
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen);
 
-// TODO; Extra feature
+inline int bloom_filter_size = 41;
+inline float bloom_threshold = 0.9f;
+
 // Given a rendered image, compute and apply a bloom post-processing effect to increase bright areas.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
