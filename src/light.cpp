@@ -78,7 +78,7 @@ bool visibilityOfLightSampleBinary(RenderState& state, const glm::vec3& lightPos
 
         glm::vec3 intersectionToLight = glm::normalize(lightPosition - intersection);
         float t = (lightPosition.x - intersection.x) / intersectionToLight.x;
-        Ray firstray = { intersection + 100.0f * std::numeric_limits<float>::epsilon() * intersectionToLight, intersectionToLight,t };
+        Ray firstray = { intersection + 0.0001f * intersectionToLight, intersectionToLight,t };
 
         HitInfo hi = hitInfo;
         bool intersect = state.bvh.intersect(state, firstray, hi);
@@ -112,7 +112,7 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
 
     glm::vec3 intersectionToLight = glm::normalize(lightPosition - intersection);
     float t = (lightPosition.x - intersection.x) / intersectionToLight.x;
-    Ray r = { intersection + 10.0f * std::numeric_limits<float>::epsilon() * intersectionToLight, intersectionToLight };
+    Ray r = { intersection + 0.0001f * intersectionToLight, intersectionToLight };
 
     HitInfo hi = hitInfo;
     bool currentHit = true;
