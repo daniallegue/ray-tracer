@@ -23,7 +23,7 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
 }
 
 //Define function for spline transformation with a cubic Bézier curve
-glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float time)
+glm::mat4 cubicBezierTransformation(const Features& features, glm::vec3 pos, float time)
 {
     float u = 1.0f - time;
     float u2 = glm::pow(u, 2);
@@ -32,11 +32,10 @@ glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float ti
     float t3 = glm::pow(time, 3);
 
 
-    float movement = features.extra.movementFactor;
-    glm::vec3 p0 = (glm::vec3(0, 0, 0) * movement) + pos;
-    glm::vec3 p1 = (glm::vec3(1, 2, 2) * movement) + pos;
-    glm::vec3 p2 = (glm::vec3(1, 2, 2) * movement) + pos;
-    glm::vec3 p3 = (glm::vec3(3, 1, 0) * movement) + pos;
+    glm::vec3 p0 = (glm::vec3(0, 0, 0) * 1.02f) + pos;
+    glm::vec3 p1 = (glm::vec3(1, 2, 2) * 1.02f) + pos;
+    glm::vec3 p2 = (glm::vec3(1, 2, 2) * 1.02f) + pos;
+    glm::vec3 p3 = (glm::vec3(3, 1, 0) * 1.02f) + pos;
     glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * time * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
 
     //Translate identity matrix by Bezier transformation
@@ -54,7 +53,9 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
     if (!features.extra.enableMotionBlur) {
         return;
     }
-
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
     for (int y = 0; y < screen.resolution()[1]; y++) {
         for (int x = 0; x != screen.resolution()[0]; x++) {
 
@@ -74,13 +75,14 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                 std::vector<Mesh> meshes;
                 for (int i = 0; i < scene.meshes.size(); i++) {
                     Mesh mesh = scene.meshes[i];
-                    std::vector<Vertex> vertices = mesh.vertices;
                     std::vector<Vertex> updatedVertices;
+                    std::vector<Vertex> vertices = mesh.vertices;
                     for (int u = 0; u < vertices.size(); u++) {
                         Vertex v = vertices[u];
                         glm::vec3 pos = v.position;
-                        glm::mat4 transform = bezierTransformation(features, pos, time);
+                        glm::mat4 transform = cubicBezierTransformation(features, pos, time);
                         glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                        //3-Dimensional vector
                         glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
 
                         Vertex updatedVertex = {
@@ -104,8 +106,9 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                 for (int i = 0; i < scene.spheres.size(); i++) {
                     Sphere sphere = scene.spheres[i];
                     glm::vec3 pos = sphere.center;
-                    glm::mat4 transform = bezierTransformation(features, pos, time);
+                    glm::mat4 transform = cubicBezierTransformation(features, pos, time);
                     glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                    // 3-Dimensional vector
                     glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
                     Sphere updatedSphere = {
                         .center = posScaled,
