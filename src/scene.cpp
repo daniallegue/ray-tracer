@@ -100,12 +100,15 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
     } break;
     case Custom: {
         // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
-        auto subMeshes = loadMesh(dataDir / "custom.obj");
-        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        //auto subMeshes = loadMesh(dataDir / "custom.obj");
+        //std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         // === CHANGE THE LIGHTING IF DESIRED ===
-        scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        //scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
         // Spherical light: position, radius, color
         // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+        scene.spheres.push_back(Sphere { glm::vec3(-2.0f, 0.0f, 0.0f), 1.0f, Material { glm::vec3(0.8f, 0.2f, 0.2f) } });
+        scene.spheres.push_back(Sphere { glm::vec3(-2.0f, 4.0f, 4.0f), 2.0f, Material { glm::vec3(0.6f, 0.8f, 0.2f) } });
+        scene.lights.emplace_back(PointLight { glm::vec3(3, 0, 3), glm::vec3(15) });
     } break;
     };
 

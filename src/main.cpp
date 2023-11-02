@@ -78,6 +78,7 @@ int main(int argc, char** argv)
         int bvhDebugLeaf = 0;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
+        bool enableBlurDebug { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -207,7 +208,8 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Motion blur", &config.features.extra.enableMotionBlur);
                 if (config.features.extra.enableMotionBlur) {
                     ImGui::Indent();
-                    uint32_t minSamples = 10, maxSamples = 1000;
+                    uint32_t minSamples = 10, maxSamples = 10000;
+                    ImGui::Checkbox("Blur Debug", &enableBlurDebug);
                     ImGui::SliderScalar("Motion Blur samples", ImGuiDataType_U32, &config.features.extra.numBlurSamples, &minSamples, &maxSamples);
                     ImGui::Unindent();
                 }
@@ -386,6 +388,7 @@ int main(int argc, char** argv)
                 } else {
                     drawSceneOpenGL(scene);
                 }
+ 
 
                 {
                     if (!debugRays.empty()) {
@@ -420,6 +423,15 @@ int main(int argc, char** argv)
                         bvh.debugDrawLeaf(bvhDebugLeaf);
                     enableDebugDraw = false;
                     glPopAttrib();
+                }
+
+                if (enableBlurDebug) {
+                    for (int i = 0; i < scene.spheres.size(); i++) {
+                        drawBezierCurveSpheres(scene.spheres[i].center, scene.spheres[i].radius, scene.spheres[i].material.kd);
+                    }
+                    for (int j = 0; j < scene.meshes.size(); j++) {
+                        drawBezierCurveMeshes(scene.meshes[j]);
+                    }
                 }
             } break;
             case ViewMode::RayTracing: {
