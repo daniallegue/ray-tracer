@@ -13,6 +13,9 @@
 // are in play, allowing objects to be in and out of focus.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
+
+//Citations: https://pathtracing.home.blog/depth-of-field/
+
 void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen)
 {
     if (!features.extra.enableDepthOfField) {
@@ -316,6 +319,9 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
 // - rayDepth; current recursive ray depth
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
+
+//Citations: Book Fundamental of Computer Graphics 4th edition by Peter Shirley Pages 333,334
+
 void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth)
 {
     // Generate an initial specular ray, and base secondary glossies on this ray
