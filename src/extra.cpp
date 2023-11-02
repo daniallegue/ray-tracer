@@ -51,6 +51,13 @@ glm::mat4 cubicBezierTransformation(const Features& features, glm::vec3 pos, flo
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen)
 {
+    //Resources:
+    //1. Fundamentals of Computer Graphics, 4th Edition, Marschner & Shirley, Section 13.4.5
+    //2. https://en.wikipedia.org/wiki/Motion_blur
+    //3. https://en.wikipedia.org/wiki/B%C3%A9zier_curve
+    //4. https://math.stackexchange.com/questions/867153/what-is-the-parametric-function-of-the-new-bezier-curve
+    //5. Answers EWI
+
     if (!features.extra.enableMotionBlur) {
         return;
     }
@@ -149,6 +156,7 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                 sceneLight += renderRays(updatedState, rays);
             }
 
+            //Average values
             sceneLight /= (float) features.extra.numBlurSamples;
             screen.setPixel(x, y, sceneLight);
         }
