@@ -14,13 +14,63 @@
 // are in play, allowing objects to be in and out of focus.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
+
+//Citations: https://pathtracing.home.blog/depth-of-field/
+
 void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, const Features& features, const Trackball& camera, Screen& screen)
 {
     if (!features.extra.enableDepthOfField) {
         return;
     }
+    float apertureSize = static_cast<float>(features.extra.apertureSize);
+    float focalLength = static_cast<float>(features.extra.focalLength);
+    float numSamples = static_cast<float>(features.extra.numDOFSamples);
+    for (int y = 0; y < screen.resolution().y; y++) {
+        for (int x = 0; x != screen.resolution().x; x++) {
+            RenderState state = {
+                .scene = scene,
+                .features = features,
+                .bvh = bvh,
+                .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
+            };
+            auto rays = generatePixelRays(state, camera, { x, y }, screen.resolution());
+            std::vector<Ray> newRays;  
+            glm::vec3 newColor { 0.f };
+            for (float samples = 0.0f; samples < numSamples; samples++) {
+                for (const auto& ray : rays) {
 
+                    // randomly generated point within aperture
+                    glm::vec3 randomAperturePoint(0.0f);
+                    randomAperturePoint.x = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+                    randomAperturePoint.y = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+                    randomAperturePoint.z = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+
+                    // New intersection refering to focal length
+                    glm::vec3 newIntersection = ray.origin + focalLength * ray.direction;
+
+                    // new origin with random aperture
+                    glm::vec3 newOrigin = ray.origin + randomAperturePoint;
+
+                    // new direction from newOrigin to newIntersection
+                    glm::vec3 newDirection = glm::normalize(newIntersection - newOrigin);
+
+                    // find value of T
+                    float newT = (newIntersection.x - newOrigin.x) / newDirection.x;
+
+                    // new Ray
+                    Ray newRay = { newOrigin, newDirection };
+
+                    newRays.push_back(newRay);
+                }
+                // render all set of new rays
+                newColor += renderRays(state, newRays);
+            }
+            
+            screen.setPixel(x, y, newColor/numSamples);
+        }
+    }
     // ...
+    //diffuseColor += rayTraceDepthOfField(state, ray,, , 0);
 }
 
 //Define function for spline transformation with a cubic Bézier curve
@@ -288,11 +338,57 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
 // - rayDepth; current recursive ray depth
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
+
+//Citations: Book Fundamental of Computer Graphics 4th edition by Peter Shirley Pages 333,334
+
 void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth)
 {
     // Generate an initial specular ray, and base secondary glossies on this ray
     // auto numSamples = state.features.extra.numGlossySamples;
     // ...
+    auto numSamples = state.features.extra.numGlossySamples;
+    if (hitInfo.material.ks == glm::vec3(0.0f)) {
+        return;
+    }
+    
+    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
+    glm::vec3 reflection = glm::normalize(glm::reflect(ray.direction, hitInfo.normal));
+
+    glm::vec3 glossyColor(0.0f, 0.0f, 0.0f);
+    std::vector<Ray> glossyRays;
+
+    //generate numSamples Glossy Rays
+    for (int x = 0; x < numSamples; x++) {
+        //Generates and angle between [0,2pi]
+        float angle = static_cast<float>(2.0 * glm::pi<float>() * rand() / static_cast<float>(RAND_MAX));
+
+        //Generate a radius between [0,1]
+        float radius = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+        //taking the corresponding disk amplitude, in this case I chose:
+        float a = hitInfo.material.shininess / 64.0f;
+        radius = a * sqrt(radius);
+        
+        //Convert polar coordinates to Cartesian coordinates
+        float r1 = radius * std::cos(angle);
+        float r2 = radius * std::sin(angle);
+
+        //created an orthonormal basis
+        glm::vec3 u = hitInfo.normal;
+        glm::vec3 v = glm::cross(u, reflection);
+
+        //sampled on that basis based on the disk
+        glm::vec3 pertubedReflection = glm::normalize(reflection + u*r1 + v*r2);
+
+        Ray glossyRay(intersection + pertubedReflection * 10.0f * std::numeric_limits<float>::epsilon(), pertubedReflection);
+        
+        glossyRays.push_back(glossyRay);
+    }
+
+    //calculate the final Color for each glossy Ray and taking its corresponding weight ->  /(x+1)
+    for (float x = 0.0f; x < glossyRays.size(); x++) {
+        hitColor = hitColor * x / (x + 1) + (renderRay(state, glossyRays[x], rayDepth + 1) * hitInfo.material.ks) / (x + 1);
+    }
 }
 
 // Given a camera ray (or reflected camera ray) that does not intersect the scene, evaluates the contribution
