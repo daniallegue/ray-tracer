@@ -5,6 +5,7 @@
 #include "recursive.h"
 #include "shading.h"
 #include "texture.h"
+#include "draw.h"
 #include <framework/trackball.h>
 
 // TODO; Extra feature
@@ -32,10 +33,10 @@ glm::mat4 cubicBezierTransformation(const Features& features, glm::vec3 pos, flo
     float t3 = glm::pow(time, 3);
 
 
-    glm::vec3 p0 = (glm::vec3(0, 0, 0) * 1.02f) + pos;
-    glm::vec3 p1 = (glm::vec3(1, 2, 2) * 1.02f) + pos;
-    glm::vec3 p2 = (glm::vec3(1, 2, 2) * 1.02f) + pos;
-    glm::vec3 p3 = (glm::vec3(3, 1, 0) * 1.02f) + pos;
+    glm::vec3 p0 = (glm::vec3(0, 0, 0) * features.extra.movement) + pos;
+    glm::vec3 p1 = (glm::vec3(1, 2, 2) * features.extra.movement) + pos;
+    glm::vec3 p2 = (glm::vec3(1, 2, 2) * features.extra.movement) + pos;
+    glm::vec3 p3 = (glm::vec3(3, 1, 0) * features.extra.movement) + pos;
     glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * time * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
 
     //Translate identity matrix by Bezier transformation
@@ -85,6 +86,8 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                         glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
                         //3-Dimensional vector
                         glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+                        // DrawLine for visuall debugging purposes
+                        drawSegment(pos, posScaled, glm::vec3 { 1.0f, 1.0f, 0.0f });
 
                         Vertex updatedVertex = {
                             .position = posScaled,
@@ -112,6 +115,9 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                     glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
                     // 3-Dimensional vector
                     glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+                    // DrawLine for visuall debugging purposes
+                    glm::vec3 direction = posScaled - pos;
+                    drawLine(pos, direction, glm::vec3 { 0.0f, 1.0f, 0.0f });
                     Sphere updatedSphere = {
                         .center = posScaled,
                         .radius = sphere.radius,

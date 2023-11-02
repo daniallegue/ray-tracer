@@ -45,6 +45,16 @@ void drawLine(const glm::vec3 origin, const glm::vec3 line, const glm::vec3& col
     glEnd();
 }
 
+void drawSegment(const glm::vec3 origin, const glm::vec3 end, const glm::vec3& color)
+{
+    glBegin(GL_LINES);
+    glColor3fv(glm::value_ptr(color));
+    glVertex3fv(glm::value_ptr(origin));
+    glVertex3fv(glm::value_ptr(end));
+    glLineWidth(1000.0f);
+    glEnd();
+}
+
 void drawExampleOfCustomVisualDebug()
 {
     glBegin(GL_TRIANGLES);

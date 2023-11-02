@@ -203,6 +203,9 @@ glm::vec3 LinearGradient::sample(float ti) const
 glm::vec3 computeLinearGradientModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo, const LinearGradient& gradient)
 {
     float cos_theta = glm::dot(glm::normalize(lightDirection), glm::normalize(hitInfo.normal));
+    if (cos_theta <= 0) {
+       return glm::vec3 { 0, 0, 0 };
+    }
     glm::vec3 t = gradient.sample(cos_theta);
     return glm::vec3 { t.x * lightColor.x, t.y * lightColor.y, t.z * lightColor.z };
  
