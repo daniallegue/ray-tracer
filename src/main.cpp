@@ -420,7 +420,9 @@ int main(int argc, char** argv)
                 }
 
                 if (enableBlurDebug) {
-                    drawBezierCurve(glm::vec3 { 1.0f, 1.0f, 0.0f });
+                    for (int i = 0; i < scene.spheres.size(); i++) {
+                        drawBezierCurve(scene.spheres[i].center, scene.spheres[i].radius, scene.spheres[i].material.kd);
+                    }
                 }
             } break;
             case ViewMode::RayTracing: {

@@ -105,15 +105,13 @@ static void drawSphereInternal(const glm::vec3& center, float radius)
     glPopMatrix();
 }
 
-void drawBezierCurve(const glm::vec3 color)
+void drawBezierCurve(glm::vec3 pos, float radius, glm::vec3 color)
 {
     //Use same points as other function 
-    glm::vec3 pos = glm::vec3(-2.0f, 0, 0);
-    glBegin(GL_LINE_STRIP);
     //Draw first vertex
-    glColor3f(color.x, color.y, color.z);
-    glVertex3f(pos.x, pos.y, pos.z);
-    for (float i = 0; i < 1.0f; i += 0.01f) {
+    //glVertex3f(pos.x, pos.y, pos.z);
+    int counter = 0;
+    for (float i = 0; i < 1.3f; i += 0.01f) {
         // Generate deterministic samples
         float u = 1.0f - i;
         float u2 = glm::pow(u, 2);
@@ -125,9 +123,13 @@ void drawBezierCurve(const glm::vec3 color)
         glm::vec3 p2 = (glm::vec3(1, 2, 2) * 1.0f) + pos;
         glm::vec3 p3 = (glm::vec3(3, 1, 0) * 1.0f) + pos;
         glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * i * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
-        glVertex3f(newPos.x, newPos.y, newPos.z);
+        //glVertex3f(newPos.x, newPos.y, newPos.z);
+        //Generate a sphere every 10 samples
+        if (counter % 10 == 0) {
+            drawSphere(newPos, radius, color, 0.3f);
+        }
+        counter++;
     }
-    glEnd();
 
 }
 
@@ -136,6 +138,16 @@ void drawSphere(const Sphere& sphere)
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     setMaterial(sphere.material);
     drawSphereInternal(sphere.center, sphere.radius);
+    glPopAttrib();
+}
+
+void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color, float opacity)
+{
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glColor4f(color.r, color.g, color.b, opacity);
+    glPolygonMode(GL_FRONT, GL_FILL);
+    glPolygonMode(GL_BACK, GL_FILL);
+    drawSphereInternal(center, radius);
     glPopAttrib();
 }
 
