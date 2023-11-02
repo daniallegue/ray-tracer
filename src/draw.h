@@ -21,7 +21,8 @@ void drawRay(const Ray& ray, const glm::vec3& color = glm::vec3(1.0f));
 
 void drawAABB(const AxisAlignedBox& box, DrawMode drawMode = DrawMode::Filled, const glm::vec3& color = glm::vec3(1.0f), float transparency = 1.0f);
 void drawLine(const glm::vec3 origin, const glm::vec3 line, const glm::vec3& color);
-void drawBezierCurve(glm::vec3 pos, float radius, glm::vec3 color);
+void drawBezierCurveSpheres(glm::vec3 pos, float radius, glm::vec3 color);
+void drawBezierCurveMeshes(Mesh mesh);
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color, float opacity);
 void drawSegment(const glm::vec3 origin, const glm::vec3 end, const glm::vec3& color);
 void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 );

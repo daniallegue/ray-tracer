@@ -73,6 +73,7 @@ glm::vec3 sampleTextureBilinear(const Image& image, const glm::vec2& texCoord)
     glm::vec3 interpolatedx1 = a1 * (1 - weight1) + (weight1 * a2);
     glm::vec3 interpolatedx2 = (b2 * weight1) + (1 - weight1) * b1; 
 
+    //Interpolate in y direction
     glm::vec3 interpolated = weight2 * interpolatedx2 + (1 - weight2) * interpolatedx1;
     return interpolated;
 

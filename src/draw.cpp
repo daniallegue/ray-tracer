@@ -105,7 +105,7 @@ static void drawSphereInternal(const glm::vec3& center, float radius)
     glPopMatrix();
 }
 
-void drawBezierCurve(glm::vec3 pos, float radius, glm::vec3 color)
+void drawBezierCurveSpheres(glm::vec3 pos, float radius, glm::vec3 color)
 {
     //Use same points as other function 
     //Draw first vertex
@@ -131,6 +131,47 @@ void drawBezierCurve(glm::vec3 pos, float radius, glm::vec3 color)
         counter++;
     }
 
+}
+
+void drawBezierCurveMeshes(Mesh mesh)
+{
+    // Use same points as other function
+    // Draw first vertex
+    // glVertex3f(pos.x, pos.y, pos.z);
+    int counter = 0;
+    for (float i = 0; i < 1.3f; i += 0.01f) {
+        float u = 1.0f - i;
+        float u2 = glm::pow(u, 2);
+        float u3 = glm::pow(u, 3);
+        float t2 = glm::pow(i, 2);
+        float t3 = glm::pow(i, 3);
+        std::vector<Vertex> updatedVertices;
+        std::vector<Vertex> vertices = mesh.vertices;
+        std::vector<glm::uvec3> triangles = mesh.triangles;
+        Material mat = mesh.material;
+        //Update transparency
+        mat.transparency = 0.7;
+        for (int j = 0; j < mesh.vertices.size(); j++) {
+            glm::vec3 pos = mesh.vertices[j].position;
+            glm::vec3 p0 = (glm::vec3(0, 0, 0) * 1.0f) + pos;
+            glm::vec3 p1 = (glm::vec3(1, 2, 2) * 1.0f) + pos;
+            glm::vec3 p2 = (glm::vec3(1, 2, 2) * 1.0f) + pos;
+            glm::vec3 p3 = (glm::vec3(3, 1, 0) * 1.0f) + pos;
+            glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * i * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
+            Vertex updatedVertex = {
+                .position = newPos,
+                .normal = mesh.vertices[j].normal,
+                .texCoord = mesh.vertices[j].texCoord
+            };
+            updatedVertices.push_back(updatedVertex);
+        }
+        if (counter % 10 == 0) {
+            drawMesh(Mesh { .vertices = updatedVertices,
+                .triangles = triangles,
+                .material = mat });
+        }
+        counter++;
+    }
 }
 
 void drawSphere(const Sphere& sphere)
