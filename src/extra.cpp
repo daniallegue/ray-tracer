@@ -1,8 +1,10 @@
 #include "extra.h"
 #include "bvh.h"
+#include "intersect.h"
 #include "light.h"
 #include "recursive.h"
 #include "shading.h"
+#include "texture.h"
 #include <framework/trackball.h>
 
 // TODO; Extra feature
@@ -67,6 +69,27 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     //diffuseColor += rayTraceDepthOfField(state, ray,, , 0);
 }
 
+//Define function for spline transformation with a cubic Bézier curve
+glm::mat4 bezierTransformation(const Features& features, glm::vec3 pos, float time)
+{
+    float u = 1.0f - time;
+    float u2 = glm::pow(u, 2);
+    float u3 = glm::pow(u, 3);
+    float t2 = glm::pow(time, 2);
+    float t3 = glm::pow(time, 3);
+
+
+    float movement = features.extra.movementFactor;
+    glm::vec3 p0 = (glm::vec3(0, 0, 0) * movement) + pos;
+    glm::vec3 p1 = (glm::vec3(1, 2, 2) * movement) + pos;
+    glm::vec3 p2 = (glm::vec3(1, 2, 2) * movement) + pos;
+    glm::vec3 p3 = (glm::vec3(3, 1, 0) * movement) + pos;
+    glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * time * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
+
+    //Translate identity matrix by Bezier transformation
+    return glm::translate(glm::mat4(1.0f), newPos);
+}
+
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of motion blur. Here, you integrate over a time domain, and not just the pixel's image domain,
@@ -79,9 +102,163 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
         return;
     }
 
+    for (int y = 0; y < screen.resolution()[1]; y++) {
+        for (int x = 0; x != screen.resolution()[0]; x++) {
+
+            glm::vec3 sceneLight; 
+            RenderState state = {
+                .scene = scene,
+                .features = features,
+                .bvh = bvh,
+                .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
+            };
+
+            for (int i = 0; i < features.extra.numBlurSamples; i++) {
+                //Generate sample for iteration
+                float time = state.sampler.next_1d();
+
+                //Apply to meshes
+                std::vector<Mesh> meshes;
+                for (int i = 0; i < scene.meshes.size(); i++) {
+                    Mesh mesh = scene.meshes[i];
+                    std::vector<Vertex> vertices = mesh.vertices;
+                    std::vector<Vertex> updatedVertices;
+                    for (int u = 0; u < vertices.size(); u++) {
+                        Vertex v = vertices[u];
+                        glm::vec3 pos = v.position;
+                        glm::mat4 transform = bezierTransformation(features, pos, time);
+                        glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                        glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+
+                        Vertex updatedVertex = {
+                            .position = posScaled,
+                            .normal = v.normal,
+                            .texCoord = v.texCoord
+                        };
+                        updatedVertices.push_back(updatedVertex);
+                    }
+
+                    Mesh newMesh = {
+                        .vertices = updatedVertices,
+                        .triangles = mesh.triangles,
+                        .material = mesh.material
+                    };
+                    meshes.push_back(newMesh);
+                }
+
+                //Apply to spheres
+                std::vector<Sphere> spheres;
+                for (int i = 0; i < scene.spheres.size(); i++) {
+                    Sphere sphere = scene.spheres[i];
+                    glm::vec3 pos = sphere.center;
+                    glm::mat4 transform = bezierTransformation(features, pos, time);
+                    glm::vec4 newPos = transform * glm::vec4 { pos.x, pos.y, pos.z, 1 };
+                    glm::vec3 posScaled = { newPos[0] / newPos[3], newPos[1] / newPos[3], newPos[2] / newPos[3] };
+                    Sphere updatedSphere = {
+                        .center = posScaled,
+                        .radius = sphere.radius,
+                        .material = sphere.material
+                    };
+
+                    spheres.push_back(updatedSphere);
+                }
+
+                //Update scene and BVH
+                Scene updatedScene {
+                    .type = scene.type,
+                    .meshes = meshes,
+                    .spheres = spheres,
+                    .lights = scene.lights
+
+                };
+                BVH bvh = BVH(updatedScene, features);
+
+                RenderState updatedState = {
+                    .scene = updatedScene,
+                    .features = state.features,
+                    .bvh = bvh,
+                    .sampler = state.sampler
+                };
+
+                //Generate scene rays
+                auto rays = generatePixelRays(updatedState, camera, { x, y }, screen.resolution());
+                sceneLight += renderRays(updatedState, rays);
+            }
+
+            sceneLight /= (float) features.extra.numBlurSamples;
+            screen.setPixel(x, y, sceneLight);
+        }
+    }
+
 }
 
+
+
 // TODO; Extra feature
+
+constexpr long double factorial(size_t n)
+{
+    if (n < 2)
+        return 1;
+
+    long double result = 1;
+    for (int i = 2; i <= n; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+constexpr float combination(size_t k, size_t n)
+{
+    //TODO use iterative nCr function
+    return static_cast<float>(factorial(n) / (factorial(k) * factorial(n - k)));
+}
+
+std::vector<float> gaussianFilterVector(uint32_t n)
+{
+    std::vector<float> result(n);
+    float sum = 0.0f;
+    for (size_t i = 0; i < n; i++) {
+        const float a = combination(i + 1, n);
+        result[i] = a;
+        sum += a;
+    }
+    for (size_t i = 0; i < n; i++) {
+        result[i] = result[i] / sum;
+    }
+
+    return result;
+}
+
+std::vector<float> gaussian_filter (0);
+
+glm::vec3 applyFilter(const std::vector<float>& filter, const uint32_t axis, const Screen& image, const std::vector<glm::vec3>& pixels, const int x, const int y)
+{
+    const size_t filtersize = filter.size();
+    const size_t filterradius = filtersize / 2;
+
+    if (axis > 1)
+        return {};
+
+    glm::vec3 total = {};
+
+    if (axis == 0) {
+        const int width = image.resolution().x;
+        for (int i = 0; i < filtersize; i++) {
+            const size_t index = std::clamp<size_t>(x + i - filterradius, 0, width - 1);
+            total += pixels[image.indexAt(index, y)] * filter[i];
+        }
+    } else if (axis == 1) {
+        const int height = image.resolution().y;
+        for (int i = 0; i < filtersize; i++) {
+            const size_t index = std::clamp<size_t>(y + i - filterradius, 0, height - 1);
+            total += pixels[image.indexAt(x, index)] * filter[i];
+        }
+    }
+
+    return total;
+}
+
 // Given a rendered image, compute and apply a bloom post-processing effect to increase bright areas.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
 // not go on a hunting expedition for your implementation, so please keep it here!
@@ -91,9 +268,42 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
         return;
     }
 
-    // ...
-}
+    if (bloom_filter_size != gaussian_filter.size()) {
+        // Create new gaussian filter
+        gaussian_filter = gaussianFilterVector(bloom_filter_size);
+    }
 
+    const std::vector<glm::vec3>& pixels = image.pixels();
+    std::vector<glm::vec3> buffer0(image.pixels().size());
+    std::vector<glm::vec3> buffer1(image.pixels().size());
+    const int width = image.resolution().x;
+    const int height = image.resolution().y;
+
+    // Filter pixels by threshold and store in first buffer
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            const glm::vec3 v = pixels[image.indexAt(x, y)];
+            if (v.x > bloom_threshold || v.y > bloom_threshold || v.z > bloom_threshold) {
+                buffer0[image.indexAt(x, y)] = v;
+            }
+        }
+    }
+
+    // Apply horizontal blur filter and store in second buffer
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            buffer1[image.indexAt(x, y)] = applyFilter(gaussian_filter, 0, image, buffer0, x, y);
+        }
+    }
+
+    // Apply vertical blur filter and add blurred result to the original image
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            glm::vec3 v = pixels[image.indexAt(x, y)] + applyFilter(gaussian_filter, 1, image, buffer1, x, y);
+            image.setPixel(x, y, glm::clamp(v, 0.0f, 1.0f));
+        }
+    }
+}
 
 // TODO; Extra feature
 // Given a camera ray (or reflected camera ray) and an intersection, evaluates the contribution of a set of
@@ -156,7 +366,6 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     }
 }
 
-// TODO; Extra feature
 // Given a camera ray (or reflected camera ray) that does not intersect the scene, evaluates the contribution
 // along the ray, originating from an environment map. You will have to add support for environment textures
 // to the Scene object, and provide a scene with the right data to supply this.
@@ -166,12 +375,31 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
 // not go on a hunting expedition for your implementation, so please keep it here!
 glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
 {
-    if (state.features.extra.enableEnvironmentMap) {
-        // Part of your implementation should go here
-        return glm::vec3(0.f);
-    } else {
-        return glm::vec3(0.f);
+    // DEPENDS ON TEXTURE MAPPING
+    if (state.features.extra.enableEnvironmentMap && state.features.enableTextureMapping) {
+        const std::shared_ptr<Image> env = state.scene.environment;
+        const glm::vec3& n = glm::normalize(ray.direction);
+
+        // Sources:
+        // Marschner, S., & Shirley, P. (2015). Fundamentals of computer graphics (Fourth). CRC Press, Taylor & Francis Group. Retrieved October 30, 2023, from https://learning-oreilly-com.tudelft.idm.oclc.org/library/view/fundamentals-of-computer/9781482229417/K22616_C011.xhtml#:-:text=Spherical%20Coordinates,line%20of%20latitude.
+
+        // Section 11.2.1 - Spherical Coordinates, from the book
+        const float lambda = atan2(n.z, n.x);
+        const float theta = glm::acos(n.y);
+
+        // Map angles to texture coordinates
+        const float x = (lambda + glm::pi<float>()) / glm::two_pi<float>();
+        const float y = (glm::pi<float>() - theta) / glm::pi<float>();
+
+        const glm::vec2 tex { x, y };
+
+        // Use bilinear interpolation if available
+        if (state.features.enableBilinearTextureFiltering) {
+            return sampleTextureBilinear(*env, tex);
+        }
+        return sampleTextureNearest(*env, tex);
     }
+    return glm::vec3(0.f);
 }
 
 

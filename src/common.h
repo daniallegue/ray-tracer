@@ -75,6 +75,11 @@ struct ExtraFeatures {
     float apertureSize = 1.0f;
     float focalLength = 1.0f;
     uint32_t numDOFSamples = 1;
+
+    //Parameters for motion blur
+    uint32_t numBlurSamples = 10; 
+    float movementFactor = 2.0f;
+
 };
 
 struct Features {

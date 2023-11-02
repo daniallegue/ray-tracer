@@ -83,19 +83,19 @@ glm::vec3 computeLambertianModel(RenderState& state, const glm::vec3& cameraDire
 // This method is unit-tested, so do not change the function signature.
 glm::vec3 computePhongModel(RenderState& state, const glm::vec3& cameraDirection, const glm::vec3& lightDirection, const glm::vec3& lightColor, const HitInfo& hitInfo)
 {
-    glm::vec3 v = glm::normalize(cameraDirection);
-    glm::vec3 l = glm::normalize(lightDirection);
-    float k = 2.0f * (glm::dot(glm::normalize(lightDirection), glm::normalize(hitInfo.normal)));
-    glm::vec3 r = (k * hitInfo.normal) - lightDirection; 
 
-    if (glm::dot(hitInfo.normal, r) <= 0) {
+    float k = 2.0f * (glm::dot(lightDirection, hitInfo.normal));
+    glm::vec3 r = glm::normalize((k * hitInfo.normal) - lightDirection); 
+
+    if (glm::dot(hitInfo.normal, lightDirection) <= 0) {
         return glm::vec3 { 0.0f };
     } else {
-        glm::vec3 specular = hitInfo.material.ks * lightColor * pow(glm::dot(v, r), hitInfo.material.shininess);
-        glm::vec3 diffuse = lightColor * sampleMaterialKd(state, hitInfo) * glm::max(glm::dot(hitInfo.normal, l), 0.0f);
+        glm::vec3 specular = hitInfo.material.ks * lightColor * glm::pow(glm::max(glm::dot(cameraDirection, r), 0.0f), hitInfo.material.shininess);
+        glm::vec3 diffuse = lightColor * sampleMaterialKd(state, hitInfo) * glm::dot(hitInfo.normal, lightDirection);
 
         return specular + diffuse;
     }
+ 
 
 }
 
