@@ -2,6 +2,8 @@
 #include "common.h"
 #include <framework/opengl_includes.h>
 // Suppress warnings in third-party code.
+#include "bvh.h"
+
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
 #ifdef __APPLE__
@@ -82,6 +84,9 @@ void drawMesh(const Mesh& mesh)
 {
     setMaterial(mesh.material);
 
+    glPushAttrib(GL_POLYGON_BIT);
+    if(debugBuildBVH) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
     glBegin(GL_TRIANGLES);
     for (const auto& triangleIndex : mesh.triangles) {
         for (int i = 0; i < 3; i++) {
@@ -91,6 +96,8 @@ void drawMesh(const Mesh& mesh)
         }
     }
     glEnd();
+
+    glPopAttrib();
 }
 
 static void drawSphereInternal(const glm::vec3& center, float radius)
@@ -274,6 +281,52 @@ void drawScene(const Scene& scene)
         drawMesh(mesh);
     for (const auto& sphere : scene.spheres)
         drawSphere(sphere);
+}
+
+void drawSplitPlane(const AxisAlignedBox& aabb, const glm::vec3& p, const glm::length_t axis, const glm::vec4& color)
+{
+    if (!enableDebugDraw)
+        return;
+
+    if (axis > 2)
+        return;
+
+    // Remove the axis component from the aabb vector
+    glm::vec3 squarevec = aabb.upper - aabb.lower;
+    squarevec[axis] = 0;
+
+    // Calculate the offset vector from lower to the splitpoint along the axis
+    glm::vec3 offset {};
+    offset[axis] = (p - aabb.lower)[axis];
+
+    // Calculate the lower point of the split plane in the bounding box
+    const glm::vec3 p0 = aabb.lower + offset;
+    // Calculate the opposing corner of the split plane in the bounding box
+    const glm::vec3 p2 = p0 + squarevec;
+
+    // Calculate the other two corner by projecting the points, ensuring a consistent winding order for all rectangles.
+    // The winding order is actually not important in this case, because the normals are not used because GL_LIGHTING is disabled
+    glm::vec3 p1 = p2;
+    glm::vec3 p3 = p0;
+
+    const int ni = (axis + 2) % 3;
+    p1[ni] = p0[ni];
+    p3[ni] = p2[ni];
+
+    // Draw rectangle
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glDisable(GL_LIGHTING);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBegin(GL_POLYGON);
+
+    glColor4fv(glm::value_ptr(color));
+    glVertex3fv(glm::value_ptr(p0));
+    glVertex3fv(glm::value_ptr(p1));
+    glVertex3fv(glm::value_ptr(p2));
+    glVertex3fv(glm::value_ptr(p3));
+
+    glEnd();
+    glPopAttrib();
 }
 
 void drawRay(const Ray& ray, const glm::vec3& color)

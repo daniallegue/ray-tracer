@@ -7,6 +7,7 @@
 #include "texture.h"
 #include "draw.h"
 #include <framework/trackball.h>
+#include <numeric>
 
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
@@ -73,7 +74,7 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     //diffuseColor += rayTraceDepthOfField(state, ray,, , 0);
 }
 
-//Define function for spline transformation with a cubic Bézier curve
+//Define function for spline transformation with a cubic Bï¿½zier curve
 glm::mat4 cubicBezierTransformation(const Features& features, glm::vec3 pos, float time)
 {
     float u = 1.0f - time;
@@ -232,7 +233,7 @@ constexpr long double factorial(size_t n)
 
 constexpr float combination(size_t k, size_t n)
 {
-    //TODO use iterative nCr function
+    // TODO use iterative nCr function
     return static_cast<float>(factorial(n) / (factorial(k) * factorial(n - k)));
 }
 
@@ -252,7 +253,7 @@ std::vector<float> gaussianFilterVector(uint32_t n)
     return result;
 }
 
-std::vector<float> gaussian_filter (0);
+std::vector<float> gaussian_filter(0);
 
 glm::vec3 applyFilter(const std::vector<float>& filter, const uint32_t axis, const Screen& image, const std::vector<glm::vec3>& pixels, const int x, const int y)
 {
@@ -427,8 +428,161 @@ glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
     return glm::vec3(0.f);
 }
 
+#pragma region SAH+Binning
 
-// TODO: Extra feature
+/// <summary>
+///  Calculates the surface area of an AABB
+/// </summary>
+/// <param name="aabb"></param>
+/// <returns>Surface area of aabb</returns>
+float computeSurfaceAreaAABB(const AxisAlignedBox& aabb)
+{
+    const glm::vec3 v = aabb.upper - aabb.lower;
+
+    // IMPORTANT! The data structures lecture slides mention using surface area. 
+    // This seems weird as this is in 3D. Even the 2019-2020 lecture recording about acceleration data structures (1:26:45) mentions the 3D surface area is the volume.
+    // However, this does not add up for a SAH for a BVH for ray tracing, as a bounding box that is completely squashed with 0 volume, can still be perfectly intersected by a ray.
+    // Therefore I have chosen to use the actual surface area of the 6 sides of the bounding box.
+
+    return 2 * (v.x * v.y + v.y * v.z + v.z * v.x);
+}
+
+AxisAlignedBox computeSpanAABB(const std::span<const AxisAlignedBox> aabbs)
+{
+    if (aabbs.size() <= 0)
+        return AxisAlignedBox {};
+
+    AxisAlignedBox acc = aabbs[0];
+    for (const AxisAlignedBox& aabb : aabbs)
+        acc = UnionAABB(acc, aabb);
+    return acc;
+}
+
+float splitcost(const std::span<AxisAlignedBox>& aabbs, uint32_t splitindex, const AxisAlignedBox& aabb)
+{
+    const size_t num_a = splitindex;
+    const size_t num_b = aabbs.size() - splitindex;
+
+    if (num_a == 0 || num_b == 0) {
+        // If this occurs, we need to make sure it doesn't get split,
+        // otherwise the child node also doesn't get split and will
+        // continue on forever, resulting in stackoverflow.
+        return std::numeric_limits<float>::infinity();
+    }
+
+    // CITE: Data structures lecture slides page 144
+    //   aabb0 corresponds to A
+    //   aabb1 corresponds to B
+    const AxisAlignedBox aabb0 = computeSpanAABB(aabbs.subspan(0, num_a));
+    const AxisAlignedBox aabb1 = computeSpanAABB(aabbs.subspan(num_a, num_b));
+
+    // CITE: Data structures lecture slides page 148
+    // Calculate naive probability of needing to intersect children using surface area (volume).
+    const float surfacearea = computeSurfaceAreaAABB(aabb);
+    const float p_a = computeSurfaceAreaAABB(aabb0) / surfacearea;
+    const float p_b = computeSurfaceAreaAABB(aabb1) / surfacearea;
+
+    // Must always be true. (Only executed in debug mode)
+    assert(p_a <= 1 && p_a >= 0);
+    assert(p_b <= 1 && p_b >= 0);
+
+    // CITE: Data structures lecture slides page 146
+    // Using constant costs for traversal and intersection (0 and 1 respectively)
+    const float cost = p_a * num_a + p_b * num_b;
+    return cost;
+}
+
+glm::vec3 computeSplitPoint(const AxisAlignedBox& aabb, const uint32_t axis, const uint32_t num_bins, const uint32_t bin)
+{
+    glm::vec3 v {};
+    v[axis] = (aabb.upper - aabb.lower)[axis];
+    return aabb.lower + v * (static_cast<float>(bin + 1) / num_bins);
+}
+
+int computeSplitIndex(const std::span<float>& centroids, const uint32_t axis, const glm::vec3& splitpoint)
+{
+    const float boundary = splitpoint[axis];
+    for (int i = 0; i < centroids.size(); i++) {
+        // Make sure list is sorted (Only executed in debug mode)
+        float centroidf = centroids[i];
+        if (i < centroids.size() - 1) {
+            assert(centroidf <= centroids[i + 1]);
+        }
+
+        if (centroidf > boundary) {
+            return i;
+        }
+    }
+    // Fallback, split in the middle
+    return centroids.size() / 2;
+}
+
+std::vector<glm::vec3> computeSplitPoints(const AxisAlignedBox& aabb, const uint32_t axis, const uint32_t num_bins)
+{
+    std::vector<glm::vec3> splitpoints(num_bins - 1);
+    for (int i = 0; i < num_bins - 1; i++) {
+        const glm::vec3 point = computeSplitPoint(aabb, axis, num_bins, i);
+        splitpoints[i] = point;
+    }
+    return splitpoints;
+}
+
+std::vector<uint32_t> computeSplitIndexes(const std::span<float>& axialcentroids, const std::vector<glm::vec3>& splitpoints, const uint32_t axis)
+{
+    std::vector<uint32_t> splitindexes(splitpoints.size());
+    std::transform(splitpoints.begin(), splitpoints.end(), splitindexes.begin(), [axialcentroids, axis](const glm::vec3& splitpoint) {
+        return computeSplitIndex(axialcentroids, axis, splitpoint);
+    });
+    return splitindexes;
+}
+
+std::vector<BVH::SplitPlane> calculateSplitPlanes(const AxisAlignedBox& aabb, uint32_t axis, std::span<BVH::Primitive> primitives)
+{
+    if (axis > 2)
+        return {};
+
+    std::ranges::sort(primitives, [axis](const BVHInterface::Primitive& a, const BVHInterface::Primitive& b) {
+        return computePrimitiveCentroid(a)[axis] < computePrimitiveCentroid(b)[axis];
+    });
+
+    // CITE: Data structures lecture slides page 152
+    // Calculate number of bins based on number of primitives with a logarithmic function such that "#bins << #primitives"
+    const uint32_t numbins = num_bins(primitives.size());
+
+    // Compute axis components of centroids for all primitives
+    std::vector<float> centroids(primitives.size());
+    std::ranges::transform(primitives, centroids.begin(), [axis](BVH::Primitive p) {
+        return computePrimitiveCentroid(p)[axis];
+    });
+
+    // Compute aabbs for all primitives
+    std::vector<AxisAlignedBox> aabbs(primitives.size());
+    std::ranges::transform(primitives, aabbs.begin(), [](BVH::Primitive p) {
+        return computePrimitiveAABB(p);
+    });
+    std::span<AxisAlignedBox> aabbspan { aabbs };
+
+    const std::vector<glm::vec3> splitpoints = computeSplitPoints(aabb, axis, numbins);
+    const std::vector<uint32_t> splitindexes = computeSplitIndexes(centroids, splitpoints, axis);
+
+    // CITE: Data structures lecture slides page 152
+    // Calculate the split costs for all split indexes
+    std::vector<float> costs(splitindexes.size());
+    std::transform(splitindexes.begin(), splitindexes.end(), costs.begin(), [aabbspan, aabb](uint32_t splitindex) {
+        return splitcost(aabbspan, splitindex, aabb);
+    });
+
+    // Create split planes
+    std::vector<BVH::SplitPlane> splitplanes(splitindexes.size());
+    for (int i = 0; i < splitindexes.size(); i++) {
+        const uint32_t splitindex = splitindexes[i];
+        const glm::vec3 splitpoint = splitpoints[i];
+        const float cost = costs[i];
+        splitplanes[i] = BVH::SplitPlane { splitpoint, axis, splitindex, cost, glm::vec4 {} };
+    }
+    return splitplanes;
+}
+
 // As an alternative to `splitPrimitivesByMedian`, use a SAH+binning splitting criterion. Refer to
 // the `Data Structures` lecture for details on this metric.
 // - aabb;       the axis-aligned bounding box around the given triangle set
@@ -439,6 +593,27 @@ glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
 size_t splitPrimitivesBySAHBin(const AxisAlignedBox& aabb, uint32_t axis, std::span<BVH::Primitive> primitives)
 {
     using Primitive = BVH::Primitive;
+    using SplitPlane = BVH::SplitPlane;
+    // CITE: Data structures lecture slides page 152
+    // Calculate "predefined splitplanes" and "compute cost for each plane"
+    std::vector<SplitPlane> splitplanes = calculateSplitPlanes(aabb, axis, primitives);
 
-    return 0; // This is clearly not the solution
+    // Remove any split indexes that don't create an actual split to prevent infinite recursion
+    const size_t len = primitives.size();
+    std::ranges::remove_if(splitplanes, [len](const BVH::SplitPlane &a){ 
+        return a.index <= 0 || a.index >= len - 1;
+    });
+
+    if (splitplanes.empty()) {
+        // Fallback
+        return splitPrimitivesByMedian(aabb, axis, primitives);
+    }
+
+    // Find splitplane with minimal cost (pointer will never be nullptr, because list is not empty)
+    const SplitPlane splitplane = *std::ranges::min_element(splitplanes, [](const SplitPlane &a, const SplitPlane &b) {
+        return a.cost < b.cost;
+    });
+    return splitplane.index;
 }
+
+#pragma endregion

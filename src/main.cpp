@@ -74,8 +74,10 @@ int main(int argc, char** argv)
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
         BVH bvh(scene, config.features);
 
+        bool fastforward = false;
+
         int bvhDebugLevel = 0;
-        int bvhDebugLeaf = 0;
+        int bvhDebugLeaf = 1;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool enableBlurDebug { false };
@@ -184,6 +186,44 @@ int main(int argc, char** argv)
 
             if (ImGui::CollapsingHeader("Extra Features")) {
                 ImGui::Checkbox("BVH SAH binning", &config.features.extra.enableBvhSahBinning);
+                if (config.features.extra.enableBvhSahBinning) {
+                    ImGui::Indent();
+
+                    ImGui::Checkbox("Debug BVH construction", &debugBuildBVH);
+                    if (debugBuildBVH) {
+                        ImGui::Indent();
+
+                        if(ImGui::Button("Reset")) {
+                            bvh = BVH(scene, config.features);
+                        }
+                        ImGui::SameLine();
+                        if(ImGui::Button("Step")) {
+                            bvh.buildStep(scene, config.features);
+                            int nextleaf = bvh.findNextSplitLeaf();
+                            if (nextleaf > 0) 
+                                bvhDebugLeaf = nextleaf;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Build all")) {
+                            while (bvh.buildStep(scene, config.features)) { }
+                        }
+                        ImGui::SameLine();
+                        ImGui::Checkbox("Fast forward", &fastforward) ; 
+                        if (fastforward) {
+                            if (bvh.buildStep(scene, config.features)) {
+                                int nextleaf = bvh.findNextSplitLeaf();
+                                if (nextleaf > 0) 
+                                    bvhDebugLeaf = nextleaf;
+                            } else {
+                                fastforward = false;
+                            }
+                        }
+                        
+
+                        ImGui::Unindent();
+                    }
+                    ImGui::Unindent();
+                }
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 if (config.features.extra.enableBloomEffect) {
                     ImGui::Indent();
@@ -266,8 +306,15 @@ int main(int argc, char** argv)
                 if (debugBVHLevel)
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
-                if (debugBVHLeaf)
+                if (debugBVHLeaf) {
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+
+                    ImGui::InputInt("Number of primitives in leaf", &num_nodes_in_primitive, ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputInt("Number of split planes in leaf", &num_splitplanes, ImGuiInputTextFlags_ReadOnly);
+
+                    ImGui::Checkbox("Snap split planes to triangle centroids", &snap_splitplanes);
+
+                }
             }
 
             ImGui::Spacing();

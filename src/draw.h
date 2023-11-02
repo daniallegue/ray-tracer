@@ -31,3 +31,13 @@ void drawSphere(const Sphere& sphere);
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color = glm::vec3(1.0f));
 void drawScene(const Scene& scene);
 
+
+/// <summary>
+/// Draws a rectangle inside an <see cref="AxisAlignedBox"/>
+/// </summary>
+/// <param name="aabb"></param>
+/// <param name="p"></param>
+/// <param name="axis"></param>
+/// <param name="color"></param>
+void drawSplitPlane(const AxisAlignedBox& aabb, const glm::vec3& p, const glm::length_t axis, const glm::vec4& color);
+
