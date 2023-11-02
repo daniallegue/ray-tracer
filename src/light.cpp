@@ -43,16 +43,7 @@ void sampleParallelogramLight(const glm::vec2& sample, const ParallelogramLight&
 {
 
     position = light.v0 + sample.x * light.edge01 + sample.y*light.edge02;
-    color = light.color0 * (1 - sample.x) * (1 - sample.y) + light.color1 * (1 - sample.x) * (sample.y) + light.color2 * (sample.x) * (1 - sample.y) + light.color3 * (sample.x) * (sample.y);
-}
-
-
-Ray generatePassthroughRay2(Ray ray, HitInfo hitInfo)
-{
-
-    glm::vec3 intersection = ray.origin + (ray.t + 10.0f * std::numeric_limits<float>::epsilon()) * ray.direction;
-    Ray result = { intersection, ray.direction };
-    return result;
+    color = light.color0 * (1.0f - sample.x) * (1.0f - sample.y) + light.color2 * (1.0f - sample.x) * (sample.y) + light.color1 * (sample.x) * (1.0f - sample.y) + light.color3 * (sample.x) * (sample.y);
 }
 
 // TODO: Standard feature
@@ -114,13 +105,30 @@ glm::vec3 visibilityOfLightSampleTransparency(RenderState& state, const glm::vec
     float t = (lightPosition.x - intersection.x) / intersectionToLight.x;
     Ray r = { intersection + 0.0001f * intersectionToLight, intersectionToLight };
 
+    //check if light can reach to create shadow
+    Ray tempRay = { intersection + 0.0001f * intersectionToLight, intersectionToLight };
+    float tempT = 0.0f;
+    HitInfo tempHi = hitInfo;
+    while (tempT < t) {
+        state.bvh.intersect(state, tempRay, tempHi);
+        tempT += tempRay.t;
+        if (tempT > t) {
+            break;
+        }
+        if (tempHi.material.transparency == 1.0f) {
+            return glm::vec3(0.0f);
+        }
+        tempRay = { tempRay.origin + (tempRay.t + 0.00001f) * tempRay.direction, tempRay.direction };
+    }
+
+
     HitInfo hi = hitInfo;
     bool currentHit = true;
 
     currentHit = state.bvh.intersect(state, r, hi);
    
-    if ( currentHit && hi.material.transparency != 0.0f) {
-        return lC * hi.material.kd * (hi.material.transparency);
+    if (currentHit && hi.material.transparency < 1.0f) {
+        return lC * hi.material.kd * (1.0f - hi.material.transparency);
     }
     return glm::vec3(0.0f); 
     
@@ -185,7 +193,7 @@ glm::vec3 computeContributionSegmentLight(RenderState& state, const SegmentLight
         PointLight pointLight(position, color);
         accumulatedLight += computeContributionPointLight(state, pointLight, ray, hitInfo);
     }
-    return accumulatedLight;
+    return accumulatedLight / (float)numSamples;
 }
 
 // TODO: Standard feature
@@ -220,7 +228,7 @@ glm::vec3 computeContributionParallelogramLight(RenderState& state, const Parall
         PointLight pointLight(position, color);
         accumulatedLight += computeContributionPointLight(state, pointLight, ray, hitInfo);
     }
-    return accumulatedLight;
+    return accumulatedLight / (float)numSamples;
 }
 
 // This function is provided as-is. You do not have to implement it.

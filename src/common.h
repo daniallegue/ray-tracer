@@ -72,8 +72,9 @@ struct ExtraFeatures {
     uint32_t numGlossySamples = 1;
 
     //Parameters for DOF
-    uint32_t apertureSize = 1;
-    uint32_t focalLength = 1;
+    float apertureSize = 1.0f;
+    float focalLength = 1.0f;
+    uint32_t numDOFSamples = 1;
 };
 
 struct Features {

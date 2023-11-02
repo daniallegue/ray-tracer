@@ -5,37 +5,6 @@
 #include "shading.h"
 #include <framework/trackball.h>
 
-//own recursive method to calculate the resulting color
-//it uses renderRay and then I calculate my own color
-glm::vec3 rayTraceDepthOfField(RenderState& state, Ray ray, float apertureSize, float focalLength, int rayDepth)
-{
-
-    // calculate all other components
-    auto L = renderRay(state, ray, rayDepth);
-
-    // calculate the point that will be focused
-    glm::vec3 intersection = ray.origin + ray.t * ray.direction;
-    glm::vec3 focalPoint = intersection + focalLength * ray.direction;
-
-    //randomly generated point within camera aperture
-    glm::vec3 randomAperturePoint(0.0f);
-    randomAperturePoint.x = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
-    randomAperturePoint.y = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
-    randomAperturePoint.z = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
-
-    //this point will represent a blur point since shifted from origin
-    glm::vec3 randomPointOnLens =ray.origin + randomAperturePoint;
-    glm::vec3 directionOfRandomPoint = glm::normalize(intersection - randomAperturePoint);
-
-    
-    //this ray simulates where the camera will be focused, essentially from randomAperturePoint in the direction of apertureToFocal
-    Ray r(randomPointOnLens, directionOfRandomPoint);
-
-    rayDepth += 1;
-    L += rayTraceDepthOfField(state, r, apertureSize, focalLength, rayDepth);
-    return L;
-}
-
 // TODO; Extra feature
 // Given the same input as for `renderImage()`, instead render an image with your own implementation
 // of Depth of Field. Here, you generate camera rays s.t. a focus point and a thin lens camera model
@@ -47,6 +16,9 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
     if (!features.extra.enableDepthOfField) {
         return;
     }
+    float apertureSize = static_cast<float>(features.extra.apertureSize);
+    float focalLength = static_cast<float>(features.extra.focalLength);
+    float numSamples = static_cast<float>(features.extra.numDOFSamples);
     for (int y = 0; y < screen.resolution().y; y++) {
         for (int x = 0; x != screen.resolution().x; x++) {
             RenderState state = {
@@ -56,16 +28,43 @@ void renderImageWithDepthOfField(const Scene& scene, const BVHInterface& bvh, co
                 .sampler = { static_cast<uint32_t>(screen.resolution().y * x + y) }
             };
             auto rays = generatePixelRays(state, camera, { x, y }, screen.resolution());
+            std::vector<Ray> newRays;  
+            glm::vec3 newColor { 0.f };
+            for (float samples = 0.0f; samples < numSamples; samples++) {
+                for (const auto& ray : rays) {
 
-            glm::vec3 diffuseColor { 0.f };
-            for (const auto& ray : rays) {
-                diffuseColor += rayTraceDepthOfField(state,ray, static_cast<float>(features.extra.apertureSize), static_cast<float>(features.extra.focalLength),0);
+                    // randomly generated point within aperture
+                    glm::vec3 randomAperturePoint(0.0f);
+                    randomAperturePoint.x = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+                    randomAperturePoint.y = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+                    randomAperturePoint.z = (static_cast<float>(rand() % RAND_MAX) / RAND_MAX) * apertureSize - apertureSize / 2.0f;
+
+                    // New intersection refering to focal length
+                    glm::vec3 newIntersection = ray.origin + focalLength * ray.direction;
+
+                    // new origin with random aperture
+                    glm::vec3 newOrigin = ray.origin + randomAperturePoint;
+
+                    // new direction from newOrigin to newIntersection
+                    glm::vec3 newDirection = glm::normalize(newIntersection - newOrigin);
+
+                    // find value of T
+                    float newT = (newIntersection.x - newOrigin.x) / newDirection.x;
+
+                    // new Ray
+                    Ray newRay = { newOrigin, newDirection };
+
+                    newRays.push_back(newRay);
+                }
+                // render all set of new rays
+                newColor += renderRays(state, newRays);
             }
-            diffuseColor /= static_cast<float>(rays.size());
-            screen.setPixel(x, y, diffuseColor);
+            
+            screen.setPixel(x, y, newColor/numSamples);
         }
     }
     // ...
+    //diffuseColor += rayTraceDepthOfField(state, ray,, , 0);
 }
 
 // TODO; Extra feature
@@ -116,6 +115,7 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
     if (hitInfo.material.ks == glm::vec3(0.0f)) {
         return;
     }
+    
     glm::vec3 intersection = ray.origin + ray.t * ray.direction;
     glm::vec3 reflection = glm::normalize(glm::reflect(ray.direction, hitInfo.normal));
 
@@ -131,7 +131,7 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
         float radius = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
         //taking the corresponding disk amplitude, in this case I chose:
-        float a = hitInfo.material.shininess / 256.0f;
+        float a = hitInfo.material.shininess / 64.0f;
         radius = a * sqrt(radius);
         
         //Convert polar coordinates to Cartesian coordinates

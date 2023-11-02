@@ -192,10 +192,11 @@ int main(int argc, char** argv)
                     ImGui::Indent();
                     // Add DOF settings here, if necessary
 
-                    //added focal length and aperture size
+                    // added focal length and aperture size
                     uint32_t minSamples = 1u, maxSamples = 512u;
-                    ImGui::SliderScalar("Focal Length", ImGuiDataType_U32, &config.features.extra.focalLength, &minSamples, &maxSamples);
-                    ImGui::SliderScalar("Aperture Size", ImGuiDataType_U32, &config.features.extra.apertureSize, &minSamples, &maxSamples);
+                    ImGui::SliderFloat("Focal Length", &config.features.extra.focalLength, 0.0f, 5.0f);
+                    ImGui::SliderFloat("Aperture Size", &config.features.extra.apertureSize, 0.0f,0.5f);
+                    ImGui::SliderScalar("numSamples", ImGuiDataType_U32, &config.features.extra.numDOFSamples, &minSamples, &maxSamples);
                     ImGui::Unindent();
                 }
                 ImGui::Checkbox("Motion blur", &config.features.extra.enableMotionBlur);
