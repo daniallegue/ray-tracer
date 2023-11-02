@@ -68,7 +68,7 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
             };
 
             for (int i = 0; i < features.extra.numBlurSamples; i++) {
-                //Generate sample for iteration
+                //Generate sample for iteration in the range [0, 1]
                 float time = state.sampler.next_1d();
 
                 //Apply to meshes
@@ -77,6 +77,7 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                     Mesh mesh = scene.meshes[i];
                     std::vector<Vertex> updatedVertices;
                     std::vector<Vertex> vertices = mesh.vertices;
+                    //Apply transformation to each vertex
                     for (int u = 0; u < vertices.size(); u++) {
                         Vertex v = vertices[u];
                         glm::vec3 pos = v.position;
@@ -104,6 +105,7 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
                 //Apply to spheres
                 std::vector<Sphere> spheres;
                 for (int i = 0; i < scene.spheres.size(); i++) {
+                    //Apply transformation to the sphere's center
                     Sphere sphere = scene.spheres[i];
                     glm::vec3 pos = sphere.center;
                     glm::mat4 transform = cubicBezierTransformation(features, pos, time);

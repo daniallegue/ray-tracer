@@ -163,7 +163,6 @@ glm::vec3 LinearGradient::sample(float ti) const
     if (ti < min) {
         return ts[minIndex].color;
     }
-
         
 
     for (int i = 0; i < components.size() - 1; i++) {
@@ -176,9 +175,11 @@ glm::vec3 LinearGradient::sample(float ti) const
        if (ti > ts[i].t && ti < ts[i + 1].t) {
                     float left = ts[i].t;
                     float right = ts[i + 1].t;
-                    float w1 = (ti - left) / (right - left);
-                    float w2 = (right - ti) / (right - left);
-                    return (w1 * ts[i].color) + (w2 * ts[i + 1].color);
+                    float t = std::clamp(ti, left, right);
+                    float w1 = (t - left) / (right - left);
+                    float w2 = (right - t) / (right - left);
+                    
+                    return (w1 * ts[i + 1].color) + (w2 * ts[i].color);
        }
     }
 }
