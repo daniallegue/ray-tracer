@@ -106,7 +106,7 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
         //scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
         // Spherical light: position, radius, color
         // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
-        scene.spheres.push_back(Sphere { glm::vec3(3.0f, -2.0f, 10.2f), 1.0f, Material { glm::vec3(0.8f, 0.2f, 0.2f) } });
+        scene.spheres.push_back(Sphere { glm::vec3(-2.0f, 0.0f, 0.0f), 1.0f, Material { glm::vec3(0.8f, 0.2f, 0.2f) } });
         scene.lights.emplace_back(PointLight { glm::vec3(3, 0, 3), glm::vec3(15) });
     } break;
     };

@@ -73,7 +73,7 @@ struct ExtraFeatures {
 
     //Parameters for motion blur
     uint32_t numBlurSamples = 50; 
-    float movement = 1.02f; 
+    bool enableBlurDebug = false; 
 
 };
 

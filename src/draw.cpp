@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "common.h"
 #include <framework/opengl_includes.h>
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
@@ -23,6 +24,7 @@ DISABLE_WARNINGS_POP()
 #include <algorithm>
 
 bool enableDebugDraw = false;
+bool enableBlurDebug; 
 
 static void setMaterial(const Material& material)
 {
@@ -101,6 +103,32 @@ static void drawSphereInternal(const glm::vec3& center, float radius)
     gluSphere(quadric, radius, 40, 20);
     gluDeleteQuadric(quadric);
     glPopMatrix();
+}
+
+void drawBezierCurve(const glm::vec3 color)
+{
+    //Use same points as other function 
+    glm::vec3 pos = glm::vec3(-2.0f, 0, 0);
+    glBegin(GL_LINE_STRIP);
+    //Draw first vertex
+    glColor3f(color.x, color.y, color.z);
+    glVertex3f(pos.x, pos.y, pos.z);
+    for (float i = 0; i < 1.0f; i += 0.01f) {
+        // Generate deterministic samples
+        float u = 1.0f - i;
+        float u2 = glm::pow(u, 2);
+        float u3 = glm::pow(u, 3);
+        float t2 = glm::pow(i, 2);
+        float t3 = glm::pow(i, 3);
+        glm::vec3 p0 = (glm::vec3(0, 0, 0) * 1.0f) + pos; 
+        glm::vec3 p1 = (glm::vec3(1, 2, 2) * 1.0f) + pos;
+        glm::vec3 p2 = (glm::vec3(1, 2, 2) * 1.0f) + pos;
+        glm::vec3 p3 = (glm::vec3(3, 1, 0) * 1.0f) + pos;
+        glm::vec3 newPos = (u3 * p0) + (3.0f * u2 * i * p1) + (3.0f * u * t2 * p2) + (t3 * p3);
+        glVertex3f(newPos.x, newPos.y, newPos.z);
+    }
+    glEnd();
+
 }
 
 void drawSphere(const Sphere& sphere)
