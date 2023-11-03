@@ -404,6 +404,12 @@ glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
     // DEPENDS ON TEXTURE MAPPING
     if (state.features.extra.enableEnvironmentMap && state.features.enableTextureMapping) {
         const std::shared_ptr<Image> env = state.scene.environment;
+        if (!env) {
+            // Environment is missing (should not happen)
+            assert(env);
+            return {};
+        }
+
         const glm::vec3& n = glm::normalize(ray.direction);
 
         // Sources:
