@@ -27,6 +27,7 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
 
 inline int bloom_filter_size = 41;
 inline float bloom_threshold = 0.9f;
+inline float bloom_scalar = 1.5f;
 
 // Given a rendered image, compute and apply a bloom post-processing effect to increase bright areas.
 // This method is not unit-tested, but we do expect to find it **exactly here**, and we'd rather
