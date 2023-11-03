@@ -215,41 +215,38 @@ void renderImageWithMotionBlur(const Scene& scene, const BVHInterface& bvh, cons
 
 }
 
+#pragma region bloom
 
-
-// TODO; Extra feature
-
-constexpr long double factorial(size_t n)
+double binomcoeff(size_t n, size_t k)
 {
-    if (n < 2)
-        return 1;
+    // The reason for rewriting the formula given in the assignment is because the given formula is mathematically correct, but is computationally inefficient and inaccurate using floating points.
+    // The current implementation still has the issue of being inaccurate for high values of n, but this is only because of the nature of floating points losing precision in exchange for higher values.
 
-    long double result = 1;
-    for (int i = 2; i <= n; i++) {
-        result *= i;
+    // CITE EXTERNAL RESOURCE: https://en.wikipedia.org/wiki/Binomial_coefficient#Multiplicative_formula, Section: Multiplicative formula
+    // "\binom{n}{k} = ... = \prod _{i=1}^{k}{\frac {n+1-i}{i}}"
+    double result = 1.0f;
+    for (int i = 1; i <= k; i++) {
+        result *= (n + 1) / static_cast<double>(i) - 1.0f;
     }
     return result;
-}
-
-constexpr float combination(size_t k, size_t n)
-{
-    // TODO use iterative nCr function
-    return static_cast<float>(factorial(n) / (factorial(k) * factorial(n - k)));
 }
 
 std::vector<float> gaussianFilterVector(uint32_t n)
 {
     std::vector<float> result(n);
-    float sum = 0.0f;
+    // CITE EXTERNAL RESOURCE: https://en.wikipedia.org/wiki/Binomial_coefficient#Sums_of_the_binomial_coefficients, Section: Sums of the binomial coefficients
+    //  " \sum _{k=0}^{n}{\binom {n}{k}} = 2^n "
+    // But we are interested in the sum of 1 to n, so let's take out k=0
+    // 
+    // > \sum _{k=1}^{n}{\binom {n}{k}} + \binom {n}{0} = 2^n
+    // >             \sum _{k=1}^{n}{\binom {n}{k}} + 1 = 2^n
+    // >                 \sum _{k=1}^{n}{\binom {n}{k}} = 2^n - 1
+    // 
+    // Therefore, the sum of all our filter values equals 2^n - 1.
+    const double s = std::pow(2, n) - 1;
     for (size_t i = 0; i < n; i++) {
-        const float a = combination(i + 1, n);
-        result[i] = a;
-        sum += a;
+        result[i] = binomcoeff(n, i + 1) / s;
     }
-    for (size_t i = 0; i < n; i++) {
-        result[i] = result[i] / sum;
-    }
-
     return result;
 }
 
@@ -303,30 +300,57 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
     const int height = image.resolution().y;
 
     // Filter pixels by threshold and store in first buffer
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
     for (int x = 0; x < width; x++) {
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
         for (int y = 0; y < height; y++) {
             const glm::vec3 v = pixels[image.indexAt(x, y)];
+            // CITE: Lecture Slides Images and Algebra, page 63 
+            // Apply threshold and write to buffer
             if (v.x > bloom_threshold || v.y > bloom_threshold || v.z > bloom_threshold) {
                 buffer0[image.indexAt(x, y)] = v;
             }
         }
     }
 
+    // CITE: Lecture Slides Images and Algebra, page 63
+    // Apply (blurring) filter
+
     // Apply horizontal blur filter and store in second buffer
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
     for (int x = 0; x < width; x++) {
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
         for (int y = 0; y < height; y++) {
             buffer1[image.indexAt(x, y)] = applyFilter(gaussian_filter, 0, image, buffer0, x, y);
         }
     }
 
     // Apply vertical blur filter and add blurred result to the original image
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
     for (int x = 0; x < width; x++) {
+#ifdef NDEBUG // Enable multi threading in Release mode
+#pragma omp parallel for schedule(guided)
+#endif
         for (int y = 0; y < height; y++) {
-            glm::vec3 v = pixels[image.indexAt(x, y)] + applyFilter(gaussian_filter, 1, image, buffer1, x, y);
+            // CITE: Lecture Slides Images and Algebra, page 63
+            // Apply (blurring) filter and scale and add to original image
+            glm::vec3 v = pixels[image.indexAt(x, y)] + bloom_scalar * applyFilter(gaussian_filter, 1, image, buffer1, x, y);
             image.setPixel(x, y, glm::clamp(v, 0.0f, 1.0f));
         }
     }
 }
+
+#pragma endregion
 
 // TODO; Extra feature
 // Given a camera ray (or reflected camera ray) and an intersection, evaluates the contribution of a set of

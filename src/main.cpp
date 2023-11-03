@@ -230,6 +230,7 @@ int main(int argc, char** argv)
 
                     ImGui::SliderInt("Filter size", &bloom_filter_size, 1, 101);
                     ImGui::SliderFloat("Threshold", &bloom_threshold, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Scalar", &bloom_scalar, 0.0f, 10.0f);
 
                     ImGui::Unindent();
                 }
