@@ -231,6 +231,29 @@ size_t splitPrimitivesByMedian(const AxisAlignedBox& aabb, uint32_t axis, std::s
     return middle;
 }
 
+bool intersectRayWithAABB(const AxisAlignedBox& aabb, Ray &ray)
+{
+    // CITE: Ray Tracing Lecture Slides page 81 
+    float oneoverx = 1.0f / ray.direction.x;
+    float oneovery = 1.0f / ray.direction.y;
+    float oneoverz = 1.0f / ray.direction.z;
+
+    float txmin = (aabb.lower.x - ray.origin.x) * oneoverx;
+    float txmax = (aabb.upper.x - ray.origin.x) * oneoverx;
+    float tymin = (aabb.lower.y - ray.origin.y) * oneovery;
+    float tymax = (aabb.upper.y - ray.origin.y) * oneovery;
+    float tzmin = (aabb.lower.z - ray.origin.z) * oneoverz;
+    float tzmax = (aabb.upper.z - ray.origin.z) * oneoverz;
+
+    float tin = std::max(std::min(txmin, txmax), std::max(std::min(tymin, tymax), std::min(tzmin, tzmax)));
+    float tout = std::min(std::max(txmin, txmax), std::min(std::max(tymin, tymax), std::max(tzmin, tzmax)));
+
+    if (tin > tout || tout < 0)
+        return false;
+
+    return true;
+}
+
 // Hierarchy traversal routine; called by the BVH's intersect(),
 // you must implement this method and implement it carefully!
 //
@@ -284,9 +307,7 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
                 const BVHInterface::Node& node = nodes[nodestack.top()];
                 nodestack.pop();
 
-                const float pre_t = ray.t;
-                if (intersectRayWithShape(node.aabb, ray)) {
-                    ray.t = pre_t;
+                if (intersectRayWithAABB(node.aabb, ray)) {
                     if (node.isLeaf()) {
 
                         const uint32_t count = node.primitiveCount();
@@ -304,9 +325,7 @@ bool intersectRayWithBVH(RenderState& state, const BVHInterface& bvh, Ray& ray, 
                         nodestack.push(node.leftChild());
                         nodestack.push(node.rightChild());
                     }
-                } else {
-                    ray.t = pre_t;
-                }
+                } 
             }
         }
     } else {
