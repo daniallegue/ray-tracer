@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fwd.h"
+#include "bvh.h"
 #include "bvh_interface.h"
 #include "render.h"
 #include "scene.h"
@@ -43,7 +44,6 @@ void postprocessImageWithBloom(const Scene& scene, const Features& features, con
 // not go on a hunting expedition for your implementation, so please keep it here!
 void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInfo, glm::vec3& hitColor, int rayDepth);
 
-// TODO; Extra feature
 // Given a camera ray (or reflected camera ray) that does not intersect the scene, evaluates the contribution
 // along the ray, originating from an environment map. You may have to add support for environment maps
 // to the Scene object, and provide a scene with the right data for this.
@@ -52,7 +52,52 @@ void renderRayGlossyComponent(RenderState& state, Ray ray, const HitInfo& hitInf
 // not go on a hunting expedition for your implementation, so please keep it here!
 glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray);
 
-// TODO: Extra feature
+/// <summary>
+///  Calculates a appropriate number of bins according to the number of nodes.
+/// </summary>
+/// <param name="numnodes"></param>
+/// <returns>Number of bins</returns>
+constexpr uint32_t num_bins(uint32_t numnodes)
+{
+    return std::max(2u, static_cast<uint32_t>(std::ceil(std::log2(numnodes))));
+}
+
+/// <summary>
+///  Calculate the cost to split the given set of nodes at the splitindex
+/// </summary>
+/// <param name="aabbs">Span of <see cref="::AxisAlignedBox"/></param>
+/// <param name="splitindex"></param>
+/// <param name="aabb"></param>
+/// <returns></returns>
+float splitcost(const std::span<AxisAlignedBox>& aabbs, uint32_t splitindex, const AxisAlignedBox& aabb);
+
+/// <summary>
+///  Computes num_bins - 1 split points that lie on the split planes
+/// </summary>
+/// <param name="aabb">Bounding box to generate planes in</param>
+/// <param name="axis"></param>
+/// <param name="num_bins"></param>
+/// <returns>Points on the split planes inside the bounding box</returns>
+std::vector<glm::vec3> computeSplitPoints(const AxisAlignedBox& aabb, const uint32_t axis, const uint32_t num_bins);
+
+/// <summary>
+///  Converts the split points into a list of split indexes.
+/// </summary>
+/// <param name="primitives">List of the axis components of the primitives to base the index upon.</param>
+/// <param name="splitpoints"></param>
+/// <param name="axis"></param>
+/// <returns></returns>
+std::vector<uint32_t> computeSplitIndexes(const std::span<float>& axialcentroids, const std::vector<glm::vec3>& splitpoints, const uint32_t axis);
+
+/// <summary>
+///  Calculates split planes based on a list of primitives
+/// </summary>
+/// <param name="aabb">Bounding box around all primitives</param>
+/// <param name="axis"></param>
+/// <param name="primitives"></param>
+/// <returns>Splitplanes</returns>
+std::vector<BVH::SplitPlane> calculateSplitPlanes(const AxisAlignedBox& aabb, uint32_t axis, std::span<BVH::Primitive> primitives);
+
 // As an alternative to `splitPrimitivesByMedian`, use a SAH+binning splitting criterion. Refer to
 // the `Data Structures` lecture for details on this metric.
 // For a description of the method's arguments, refer to 'bounding_volume_hierarchy.cpp'
