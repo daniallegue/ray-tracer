@@ -436,10 +436,8 @@ glm::vec3 sampleEnvironmentMap(RenderState& state, Ray ray)
 
         const glm::vec3& n = glm::normalize(ray.direction);
 
-        // Sources:
-        // Marschner, S., & Shirley, P. (2015). Fundamentals of computer graphics (Fourth). CRC Press, Taylor & Francis Group. Retrieved October 30, 2023, from https://learning-oreilly-com.tudelft.idm.oclc.org/library/view/fundamentals-of-computer/9781482229417/K22616_C011.xhtml#:-:text=Spherical%20Coordinates,line%20of%20latitude.
-
-        // Section 11.2.1 - Spherical Coordinates, from the book
+        // CITE: Fundamentals of Computer Graphics, 4th Edition, Marschner & Shirley
+        // Section 11.2.1 - Spherical Coordinates
         const float lambda = atan2(n.z, n.x);
         const float theta = glm::acos(n.y);
 
